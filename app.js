@@ -15,6 +15,7 @@ let historyChart = null;
 let dynamicsCharts = [];
 let selectedPaceStrategy = "even";
 let calendarCursor = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+let deferredInstallPrompt = null;
 
 const PROFILE_STORAGE_KEY = "strionProfileV1";
 const COLLAPSE_STORAGE_KEY = "strionCollapsedSectionsV1";
@@ -124,6 +125,12 @@ $("#maxHeartRateInput").addEventListener("input", (event) => {
   if (activity) renderHeartRateZones(activity);
 });
 $("#useLocationButton").addEventListener("click", requestLocalWeather);
+$("#compareBaseSelect").addEventListener("change", renderRunComparison);
+$("#compareTargetSelect").addEventListener("change", renderRunComparison);
+$("#exportDataButton").addEventListener("click", exportRunnerData);
+$("#importDataButton").addEventListener("click", () => $("#importDataInput").click());
+$("#importDataInput").addEventListener("change", importRunnerData);
+$("#installAppButton").addEventListener("click", installStrionApp);
 
 renderPersonalHub();
 updateGoalPaceAnalyzer();
@@ -131,6 +138,7 @@ renderTrainingCenter();
 initializeCollapsibles();
 startLiveClock();
 loadWeather(37.5665, 126.9780, "서울");
+initializePwa();
 $("#workoutPlanForm").elements.date.value = toDateInputValue(new Date());
 
 function startLiveClock() {
@@ -570,6 +578,8 @@ function renderTrainingCenter() {
   renderWeeklyGoals(activities);
   renderRunningCalendar();
   renderHistoryChart(activities);
+  renderWeeklyReport(activities);
+  populateRunComparison(activities);
 }
 
 function saveWeeklyGoals(event) {
@@ -629,6 +639,7 @@ function renderRunningCalendar() {
 
 function saveActivitySummary(data) {
   const id = `${data.startTime.toISOString()}-${Math.round(data.totalDistance)}`;
+  const score = calculateRunScore(data);
   const summary = {
     id,
     date: toDateInputValue(data.startTime),
@@ -638,6 +649,13 @@ function saveActivitySummary(data) {
     duration: data.totalTime,
     pace: speedToPace(data.averageSpeed),
     heartRate: data.averageHeartRate || null,
+    cadence: data.averageCadence || null,
+    ascent: data.ascent || null,
+    score: score.total,
+    paceScore: score.pace,
+    finishScore: score.finish,
+    heartScore: score.heart,
+    cadenceScore: score.cadence,
   };
   const index = runnerProfile.activities.findIndex((item) => item.id === id);
   if (index >= 0) runnerProfile.activities[index] = summary;
@@ -694,6 +712,152 @@ function renderHistoryChart(activities) {
       },
     },
   });
+}
+
+function renderWeeklyReport(activities) {
+  const thisStart = startOfWeek(new Date());
+  const thisEnd = new Date(thisStart);
+  thisEnd.setDate(thisEnd.getDate() + 7);
+  const previousStart = new Date(thisStart);
+  previousStart.setDate(previousStart.getDate() - 7);
+  const current = activities.filter((item) => {
+    const date = dateFromInput(item.date);
+    return date >= thisStart && date < thisEnd;
+  });
+  const previous = activities.filter((item) => {
+    const date = dateFromInput(item.date);
+    return date >= previousStart && date < thisStart;
+  });
+  const currentDistance = current.reduce((sum, item) => sum + item.distanceKm, 0);
+  const previousDistance = previous.reduce((sum, item) => sum + item.distanceKm, 0);
+  const distanceChange = previousDistance ? (currentDistance - previousDistance) / previousDistance * 100 : null;
+  const averageScore = average(current.map((item) => item.score));
+  const highIntensityRuns = runnerProfile.maxHeartRate
+    ? current.filter((item) => item.heartRate / runnerProfile.maxHeartRate >= .8).length
+    : 0;
+
+  $("#weeklyReportMetrics").innerHTML = [
+    ["이번 주 거리", `${currentDistance.toFixed(1)} km`],
+    ["지난주 대비", Number.isFinite(distanceChange) ? `${distanceChange >= 0 ? "+" : ""}${Math.round(distanceChange)}%` : "비교 대기"],
+    ["평균 RUN SCORE", Number.isFinite(averageScore) ? Math.round(averageScore) : "--"],
+  ].map(([label, value]) => `<article><span>${label}</span><strong>${value}</strong></article>`).join("");
+
+  let status = "READY";
+  let advice = "이번 주 첫 러닝은 30–40분 편안한 E 페이스로 시작해 몸 상태를 확인해보세요.";
+  if (current.length) {
+    if (Number.isFinite(distanceChange) && distanceChange > 25) {
+      status = "RECOVER";
+      advice = "주간 거리가 지난주보다 크게 늘었습니다. 다음 러닝은 회복주로 두고 수면과 근육 피로를 먼저 확인하세요.";
+    } else if (highIntensityRuns >= 2) {
+      status = "EASY NEXT";
+      advice = "높은 심박 강도의 러닝이 두 번 이상입니다. 다음 세션은 대화 가능한 강도의 이지런 또는 휴식을 추천합니다.";
+    } else if (averageScore >= 82 && current.length >= 2) {
+      status = "BUILD";
+      advice = "일관성이 좋은 한 주입니다. 컨디션이 괜찮다면 다음 주 총거리를 5–10% 이내에서만 늘려보세요.";
+    } else {
+      status = "BALANCED";
+      advice = "현재 부하는 안정적입니다. 이지런 중심을 유지하고 주 1회만 품질 훈련을 배치해보세요.";
+    }
+  }
+  $("#weeklyReportStatus").textContent = status;
+  $("#weeklyReportAdvice").textContent = advice;
+}
+
+function populateRunComparison(activities) {
+  const baseSelect = $("#compareBaseSelect");
+  const targetSelect = $("#compareTargetSelect");
+  const previousBase = baseSelect.value;
+  const previousTarget = targetSelect.value;
+  const options = activities.map((item) => `<option value="${escapeHtml(item.id)}">${formatCompactDate(item.date)} · ${item.distanceKm.toFixed(1)}km</option>`).join("");
+  baseSelect.innerHTML = options || '<option value="">기록 없음</option>';
+  targetSelect.innerHTML = options || '<option value="">기록 없음</option>';
+  if (activities.length) {
+    baseSelect.value = activities.some((item) => item.id === previousBase) ? previousBase : activities[Math.min(1, activities.length - 1)].id;
+    targetSelect.value = activities.some((item) => item.id === previousTarget) ? previousTarget : activities[0].id;
+  }
+  renderRunComparison();
+}
+
+function renderRunComparison() {
+  const base = runnerProfile.activities.find((item) => item.id === $("#compareBaseSelect").value);
+  const target = runnerProfile.activities.find((item) => item.id === $("#compareTargetSelect").value);
+  if (!base || !target || runnerProfile.activities.length < 2) {
+    $("#runComparison").innerHTML = '<p class="comparison-empty">서로 다른 FIT 활동을 두 개 이상 분석하면 기록을 비교할 수 있습니다.</p>';
+    return;
+  }
+  const fields = [
+    { label: "RUN SCORE", a: base.score, b: target.score, format: (value) => Number.isFinite(value) ? Math.round(value) : "--", better: "max" },
+    { label: "거리", a: base.distanceKm, b: target.distanceKm, format: (value) => `${Number(value).toFixed(2)}km` },
+    { label: "평균 페이스", a: base.pace, b: target.pace, format: (value) => `${formatPace(value)}/km`, better: "min" },
+    { label: "평균 심박", a: base.heartRate, b: target.heartRate, format: (value) => Number.isFinite(value) ? `${Math.round(value)}bpm` : "--" },
+    { label: "케이던스", a: base.cadence, b: target.cadence, format: (value) => Number.isFinite(value) ? `${Math.round(value)}spm` : "--" },
+  ];
+  $("#runComparison").innerHTML = fields.map((field) => {
+    const aBetter = field.better && Number.isFinite(field.a) && Number.isFinite(field.b) && (field.better === "min" ? field.a < field.b : field.a > field.b);
+    const bBetter = field.better && Number.isFinite(field.a) && Number.isFinite(field.b) && (field.better === "min" ? field.b < field.a : field.b > field.a);
+    return `<div class="comparison-row"><span>${field.label}</span><b class="${aBetter ? "better" : ""}">${field.format(field.a)}</b><b class="${bBetter ? "better" : ""}">${field.format(field.b)}</b></div>`;
+  }).join("");
+}
+
+function exportRunnerData() {
+  const payload = JSON.stringify({ app: "STRION", version: 1, exportedAt: new Date().toISOString(), profile: runnerProfile }, null, 2);
+  const url = URL.createObjectURL(new Blob([payload], { type: "application/json" }));
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `strion-backup-${toDateInputValue(new Date())}.json`;
+  link.click();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+async function importRunnerData(event) {
+  const file = event.currentTarget.files?.[0];
+  event.currentTarget.value = "";
+  if (!file) return;
+  try {
+    const backup = JSON.parse(await file.text());
+    const profile = backup?.profile;
+    if (backup?.app !== "STRION" || !profile || !Array.isArray(profile.activities) || !Array.isArray(profile.workouts) || !Array.isArray(profile.races)) {
+      throw new Error("올바른 STRION 백업 파일이 아닙니다.");
+    }
+    if (!window.confirm("현재 이 기기에 저장된 STRION 데이터를 백업 파일로 교체할까요?")) return;
+    localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(profile));
+    runnerProfile = loadRunnerProfile();
+    renderPersonalHub();
+    renderTrainingCenter();
+    $("#maxHeartRateInput").value = runnerProfile.maxHeartRate || "";
+    window.alert("STRION 데이터 복원이 완료되었습니다.");
+  } catch (error) {
+    window.alert(error.message || "백업 파일을 읽지 못했습니다.");
+  }
+}
+
+function initializePwa() {
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("./sw.js?v=20261024-3").catch(() => {});
+  }
+  const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isStandalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone;
+  if (isIos && !isStandalone) $("#installAppButton").classList.remove("hidden");
+  window.addEventListener("beforeinstallprompt", (event) => {
+    event.preventDefault();
+    deferredInstallPrompt = event;
+    $("#installAppButton").classList.remove("hidden");
+  });
+  window.addEventListener("appinstalled", () => {
+    deferredInstallPrompt = null;
+    $("#installAppButton").classList.add("hidden");
+  });
+}
+
+async function installStrionApp() {
+  if (!deferredInstallPrompt) {
+    window.alert("iPhone/iPad에서는 Safari 공유 버튼을 누른 뒤 '홈 화면에 추가'를 선택해주세요.");
+    return;
+  }
+  deferredInstallPrompt.prompt();
+  await deferredInstallPrompt.userChoice;
+  deferredInstallPrompt = null;
+  $("#installAppButton").classList.add("hidden");
 }
 
 async function analyzeFiles(files) {
@@ -817,6 +981,7 @@ function renderDashboard(data) {
   `).join("");
 
   renderInsight(data);
+  renderRunScore(data);
   renderVdotCoach(data);
   renderTimeline("pace");
   renderSplits(data);
@@ -857,6 +1022,63 @@ function renderInsight(data) {
   $("#insightTitle").textContent = title;
   $("#insightText").textContent = text;
   $("#effortBadge").textContent = badge;
+}
+
+function calculateRunScore(data) {
+  const activePaces = data.points
+    .map((point) => speedToPace(point.speed))
+    .filter((pace) => Number.isFinite(pace) && pace >= 150 && pace <= 1200);
+  const paceMean = average(activePaces);
+  const paceDeviation = standardDeviation(activePaces, paceMean);
+  const paceCv = paceMean ? paceDeviation / paceMean : null;
+  const paceScore = Number.isFinite(paceCv) ? clamp(100 - paceCv * 420, 35, 100) : 65;
+
+  const firstPace = segmentAveragePace(data.points, 0, .5);
+  const secondPace = segmentAveragePace(data.points, .5, 1);
+  const finishDelta = firstPace && secondPace ? (secondPace - firstPace) / firstPace : 0;
+  const finishScore = clamp(92 - Math.max(0, finishDelta) * 350 + Math.max(0, -finishDelta) * 80, 40, 100);
+
+  const heartPoints = data.points.filter((point) => Number.isFinite(point.heartRate));
+  const halfIndex = Math.floor(heartPoints.length / 2);
+  const firstHeart = average(heartPoints.slice(0, halfIndex).map((point) => point.heartRate));
+  const secondHeart = average(heartPoints.slice(halfIndex).map((point) => point.heartRate));
+  const heartDrift = firstHeart ? (secondHeart - firstHeart) / firstHeart : null;
+  const heartScore = Number.isFinite(heartDrift) ? clamp(100 - Math.max(0, heartDrift) * 420, 45, 100) : 70;
+
+  const cadences = data.points.map((point) => point.cadence).filter(Number.isFinite);
+  const cadenceMean = average(cadences);
+  const cadenceCv = cadenceMean ? standardDeviation(cadences, cadenceMean) / cadenceMean : null;
+  const cadenceScore = Number.isFinite(cadenceCv) ? clamp(100 - cadenceCv * 500, 45, 100) : 70;
+  const total = Math.round(paceScore * .45 + finishScore * .25 + heartScore * .18 + cadenceScore * .12);
+
+  return {
+    total,
+    pace: Math.round(paceScore),
+    finish: Math.round(finishScore),
+    heart: Math.round(heartScore),
+    cadence: Math.round(cadenceScore),
+  };
+}
+
+function renderRunScore(data) {
+  const score = calculateRunScore(data);
+  const labels = score.total >= 90
+    ? ["탁월한 리듬", "페이스와 후반 유지력이 매우 안정적입니다."]
+    : score.total >= 80
+      ? ["안정적인 러닝", "전체 흐름이 고르게 유지된 좋은 러닝입니다."]
+      : score.total >= 70
+        ? ["균형 잡힌 러닝", "일부 변동은 있지만 전반적인 흐름은 양호합니다."]
+        : ["회복 포인트 확인", "초반 속도와 후반 유지력, 심박 변화를 함께 살펴보세요."];
+  $("#runScoreValue").textContent = score.total;
+  $(".run-score-gauge").style.setProperty("--score-angle", `${score.total * 3.6}deg`);
+  $("#runScoreTitle").textContent = labels[0];
+  $("#runScoreDescription").textContent = `${labels[1]} 이 점수는 훈련 일관성을 설명하는 참고 지표입니다.`;
+  $("#runScoreMetrics").innerHTML = [
+    ["페이스 안정성", score.pace],
+    ["후반 유지력", score.finish],
+    ["심박 안정성", score.heart],
+    ["케이던스 안정성", score.cadence],
+  ].map(([label, value]) => `<article class="score-metric"><span>${label}</span><strong>${value}</strong></article>`).join("");
 }
 
 function renderVdotCoach(data) {
@@ -1362,6 +1584,12 @@ function numberOrNull(value) { const number = Number(value); return Number.isFin
 function firstNullableNumber(...values) { return values.map(numberOrNull).find((value) => value !== null) ?? null; }
 function firstNumber(...values) { return firstNullableNumber(...values) ?? 0; }
 function average(values) { const valid = values.filter(Number.isFinite); return valid.length ? valid.reduce((sum, value) => sum + value, 0) / valid.length : null; }
+function standardDeviation(values, mean = average(values)) {
+  const valid = values.filter(Number.isFinite);
+  if (!valid.length || !Number.isFinite(mean)) return null;
+  return Math.sqrt(valid.reduce((sum, value) => sum + (value - mean) ** 2, 0) / valid.length);
+}
+function clamp(value, minimum, maximumValue) { return Math.min(maximumValue, Math.max(minimum, value)); }
 function divideOrNull(value, divisor) { return Number.isFinite(value) ? value / divisor : null; }
 function maximum(values) { const valid = values.filter(Number.isFinite); return valid.length ? Math.max(...valid) : null; }
 function roundOrDash(value) { return Number.isFinite(value) ? String(Math.round(value)) : "--"; }

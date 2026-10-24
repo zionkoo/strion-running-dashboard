@@ -1,0 +1,19 @@
+{
+  "name": "STRION · Running Dashboard",
+  "short_name": "STRION",
+  "description": "Garmin FIT 데이터를 기기 안에서 분석하는 러닝 대시보드",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#05080d",
+  "theme_color": "#05080d",
+  "lang": "ko",
+  "icons": [
+    {
+      "src": "strion-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

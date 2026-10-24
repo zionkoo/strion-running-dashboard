@@ -4,11 +4,16 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="한 걸음의 데이터를 다음 진전으로 연결하는 Garmin FIT 러닝 대시보드" />
+    <meta name="theme-color" content="#05080d" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <title>STRION</title>
+    <link rel="manifest" href="manifest.webmanifest?v=20261024-3" />
+    <link rel="icon" href="strion-icon.svg" type="image/svg+xml" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Gowun+Dodum&family=Orbitron:wght@500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="styles.css?v=20261024-2" />
+    <link rel="stylesheet" href="styles.css?v=20261024-3" />
   </head>
   <body>
     <div class="noise" aria-hidden="true"></div>
@@ -21,6 +26,7 @@
         <span id="currentDate">--월 --일 ---요일</span>
         <strong id="currentTime">--:--:--</strong>
       </div>
+      <button id="installAppButton" class="install-app-button hidden" type="button">앱 설치</button>
       <div class="privacy-chip"><span></span> 파일은 이 기기에서만 분석됩니다</div>
     </header>
 
@@ -197,7 +203,14 @@
             </article>
 
             <article class="training-history">
-              <div class="card-heading"><span class="card-kicker">LOAD</span><h3>최근 8주 러닝</h3></div>
+              <div class="card-heading">
+                <div><span class="card-kicker">LOAD</span><h3>최근 8주 러닝</h3></div>
+                <div class="data-actions">
+                  <button id="exportDataButton" class="mini-button" type="button">백업</button>
+                  <button id="importDataButton" class="mini-button" type="button">복원</button>
+                  <input id="importDataInput" type="file" accept="application/json,.json" hidden />
+                </div>
+              </div>
               <div class="history-summary">
                 <span>누적 거리<strong id="historyDistance">0.0 km</strong></span>
                 <span>러닝 횟수<strong id="historyCount">0회</strong></span>
@@ -206,6 +219,23 @@
               <div class="history-chart-wrap"><canvas id="historyChart"></canvas></div>
               <div id="activityHistoryList" class="activity-history-list"></div>
               <p class="storage-note">FIT 원본은 전송하지 않으며 분석 요약만 이 브라우저에 저장됩니다.</p>
+            </article>
+          </div>
+
+          <div class="training-insights-grid">
+            <article class="weekly-report-card">
+              <div class="card-heading"><div><span class="card-kicker">WEEKLY REPORT</span><h3>이번 주 훈련 리포트</h3></div><strong id="weeklyReportStatus">READY</strong></div>
+              <div id="weeklyReportMetrics" class="weekly-report-metrics"></div>
+              <p id="weeklyReportAdvice" class="weekly-report-advice">FIT 활동을 저장하면 주간 흐름과 다음 훈련을 제안합니다.</p>
+            </article>
+
+            <article class="run-compare-card">
+              <div class="card-heading"><div><span class="card-kicker">RUN COMPARE</span><h3>두 러닝 비교</h3></div></div>
+              <div class="compare-selectors">
+                <label>기준 러닝<select id="compareBaseSelect"></select></label>
+                <label>비교 러닝<select id="compareTargetSelect"></select></label>
+              </div>
+              <div id="runComparison" class="run-comparison"></div>
             </article>
           </div>
         </section>
@@ -273,6 +303,18 @@
             <p id="insightText">데이터에서 확인한 핵심 내용을 정리합니다.</p>
           </div>
           <div id="effortBadge" class="effort-badge">STEADY</div>
+        </section>
+
+        <section id="runScorePanel" class="panel run-score-panel">
+          <div class="run-score-gauge" aria-label="STRION 러닝 종합 점수">
+            <strong id="runScoreValue">--</strong><span>/ 100</span>
+          </div>
+          <div class="run-score-copy">
+            <p class="section-label">STRION RUN SCORE</p>
+            <h2 id="runScoreTitle">러닝 일관성을 계산합니다.</h2>
+            <p id="runScoreDescription">페이스·후반 유지력·심박·케이던스 데이터를 종합한 참고 점수입니다.</p>
+          </div>
+          <div id="runScoreMetrics" class="run-score-metrics"></div>
         </section>
 
         <section id="vdotCoachPanel" class="panel vdot-coach-panel">
@@ -437,6 +479,6 @@
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-    <script type="module" src="app.js?v=20261024-1"></script>
+    <script type="module" src="app.js?v=20261024-3"></script>
   </body>
 </html>

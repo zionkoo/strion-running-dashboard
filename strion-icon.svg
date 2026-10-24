@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="STRION">
+  <defs>
+    <linearGradient id="bg" x1="40" y1="20" x2="470" y2="490" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#07131f"/>
+      <stop offset="1" stop-color="#03070c"/>
+    </linearGradient>
+    <linearGradient id="mark" x1="125" y1="120" x2="405" y2="390" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#50ecff"/>
+      <stop offset=".55" stop-color="#8ba5ff"/>
+      <stop offset="1" stop-color="#ff3df2"/>
+    </linearGradient>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="11" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <path d="M102 100h310M102 412h310" stroke="#50ecff" stroke-opacity=".2" stroke-width="4"/>
+  <path d="M358 133H205c-55 0-91 27-91 72 0 46 34 64 91 77l76 17c22 5 31 13 31 26 0 17-15 26-43 26H116" fill="none" stroke="url(#mark)" stroke-linecap="square" stroke-width="47" filter="url(#glow)"/>
+  <path d="M374 126l-24 59 61-24" fill="none" stroke="#d7f8ff" stroke-linecap="square" stroke-linejoin="miter" stroke-width="16"/>
+</svg>
