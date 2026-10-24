@@ -21,6 +21,8 @@ let liveClockDateKey = "";
 
 const PROFILE_STORAGE_KEY = "strionProfileV1";
 const COLLAPSE_STORAGE_KEY = "strionCollapsedSectionsV1";
+const ACTIVITY_DB_NAME = "strionActivityStoreV1";
+const ACTIVITY_STORE_NAME = "fitFiles";
 let runnerProfile = loadRunnerProfile();
 
 const chartConfig = {
@@ -105,7 +107,8 @@ $("#downloadPaceCsvButton").addEventListener("click", (event) => {
 });
 $("#workoutPlanForm").addEventListener("submit", saveWorkoutPlan);
 $("#workoutPlanList").addEventListener("click", handleWorkoutPlanAction);
-$("#activityHistoryList").addEventListener("click", deleteActivitySummary);
+$("#activityHistoryList").addEventListener("click", handleActivityHistoryAction);
+$("#openSavedActivityButton").addEventListener("click", openSelectedActivity);
 $("#weeklyGoalForm").addEventListener("submit", saveWeeklyGoals);
 $("#previousMonthButton").addEventListener("click", () => changeCalendarMonth(-1));
 $("#nextMonthButton").addEventListener("click", () => changeCalendarMonth(1));
@@ -674,16 +677,27 @@ function renderTrainingCenter() {
       </div>`).join("")
     : '<p class="empty-copy">첫 훈련 일정을 추가해보세요.</p>';
 
-  const activities = [...runnerProfile.activities].sort((a, b) => b.date.localeCompare(a.date));
+  const activities = [...runnerProfile.activities].sort((a, b) => (b.timestamp || b.date).localeCompare(a.timestamp || a.date));
   $("#historyDistance").textContent = `${activities.reduce((sum, item) => sum + item.distanceKm, 0).toFixed(1)} km`;
   $("#historyCount").textContent = `${activities.length}회`;
   $("#historyDuration").textContent = formatDuration(activities.reduce((sum, item) => sum + item.duration, 0));
+  const savedActivitySelect = $("#savedActivitySelect");
+  const previousSelection = savedActivitySelect.value;
+  savedActivitySelect.innerHTML = activities.length
+    ? activities.map((item) => `<option value="${escapeHtml(item.id)}">${formatCompactDate(item.date)} · ${escapeHtml(item.name || "러닝")} · ${item.distanceKm.toFixed(2)}km</option>`).join("")
+    : '<option value="">저장된 러닝이 없습니다</option>';
+  savedActivitySelect.disabled = !activities.length;
+  $("#openSavedActivityButton").disabled = !activities.length;
+  if (activities.some((item) => item.id === previousSelection)) savedActivitySelect.value = previousSelection;
   $("#activityHistoryList").innerHTML = activities.length
     ? activities.slice(0, 5).map((item) => `
       <div class="activity-history-row">
         <span>${formatCompactDate(item.date)} · ${escapeHtml(item.name || "러닝")}</span>
-        <b>${item.distanceKm.toFixed(2)}km · ${formatPace(item.pace)}/km</b>
-        <button class="mini-button" type="button" data-activity-id="${item.id}">삭제</button>
+        <b>${item.distanceKm.toFixed(2)}km · ${formatPace(item.pace)}/km${item.calories ? ` · ${Math.round(item.calories)}kcal` : ""}</b>
+        <div class="activity-history-actions">
+          <button class="mini-button" type="button" data-action="open" data-activity-id="${item.id}">보기</button>
+          <button class="mini-button" type="button" data-action="delete" data-activity-id="${item.id}">삭제</button>
+        </div>
       </div>`).join("")
     : '<p class="empty-copy">FIT 파일을 분석하면 러닝 요약이 여기에 쌓입니다.</p>';
   renderWeeklyGoals(activities);
@@ -761,6 +775,8 @@ function saveActivitySummary(data) {
     pace: speedToPace(data.averageSpeed),
     heartRate: data.averageHeartRate || null,
     cadence: data.averageCadence || null,
+    maxHeartRate: data.maxHeartRate || null,
+    calories: data.calories || null,
     ascent: data.ascent || null,
     score: score.total,
     paceScore: score.pace,
@@ -774,14 +790,25 @@ function saveActivitySummary(data) {
   runnerProfile.activities = runnerProfile.activities.slice(-100);
   persistRunnerProfile();
   renderTrainingCenter();
+  return id;
 }
 
-function deleteActivitySummary(event) {
+async function handleActivityHistoryAction(event) {
   const button = event.target.closest("button[data-activity-id]");
   if (!button) return;
+  if (button.dataset.action === "open") {
+    await openStoredActivity(button.dataset.activityId);
+    return;
+  }
   runnerProfile.activities = runnerProfile.activities.filter((item) => item.id !== button.dataset.activityId);
   persistRunnerProfile();
+  await deleteStoredActivityFile(button.dataset.activityId);
   renderTrainingCenter();
+}
+
+async function openSelectedActivity() {
+  const id = $("#savedActivitySelect").value;
+  if (id) await openStoredActivity(id);
 }
 
 function renderHistoryChart(activities) {
@@ -1009,8 +1036,12 @@ async function analyzeFiles(files) {
   setView(loadingView);
   try {
     const decodedActivities = [];
-    for (const file of files) decodedActivities.push(await decodeFitFile(file));
-    decodedActivities.forEach(saveActivitySummary);
+    for (const file of files) {
+      const decoded = await decodeFitFile(file);
+      const id = saveActivitySummary(decoded);
+      await storeActivityFile(id, file);
+      decodedActivities.push(decoded);
+    }
     activity = decodedActivities.at(-1);
     renderDashboard(activity);
     if (decodedActivities.length > 1) {
@@ -1021,6 +1052,81 @@ async function analyzeFiles(files) {
   } catch (error) {
     console.error(error);
     showError(error.message || "파일이 손상되었거나 지원하지 않는 FIT 파일입니다.");
+  }
+}
+
+function openActivityDatabase() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(ACTIVITY_DB_NAME, 1);
+    request.onupgradeneeded = () => {
+      const database = request.result;
+      if (!database.objectStoreNames.contains(ACTIVITY_STORE_NAME)) database.createObjectStore(ACTIVITY_STORE_NAME, { keyPath: "id" });
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+async function storeActivityFile(id, file) {
+  const database = await openActivityDatabase();
+  await new Promise((resolve, reject) => {
+    const transaction = database.transaction(ACTIVITY_STORE_NAME, "readwrite");
+    transaction.objectStore(ACTIVITY_STORE_NAME).put({
+      id,
+      name: file.name,
+      type: file.type || "application/octet-stream",
+      lastModified: file.lastModified || Date.now(),
+      blob: file,
+    });
+    transaction.oncomplete = resolve;
+    transaction.onerror = () => reject(transaction.error);
+  });
+  database.close();
+}
+
+async function getStoredActivityFile(id) {
+  const database = await openActivityDatabase();
+  const record = await new Promise((resolve, reject) => {
+    const request = database.transaction(ACTIVITY_STORE_NAME, "readonly").objectStore(ACTIVITY_STORE_NAME).get(id);
+    request.onsuccess = () => resolve(request.result || null);
+    request.onerror = () => reject(request.error);
+  });
+  database.close();
+  return record;
+}
+
+async function deleteStoredActivityFile(id) {
+  try {
+    const database = await openActivityDatabase();
+    await new Promise((resolve, reject) => {
+      const transaction = database.transaction(ACTIVITY_STORE_NAME, "readwrite");
+      transaction.objectStore(ACTIVITY_STORE_NAME).delete(id);
+      transaction.oncomplete = resolve;
+      transaction.onerror = () => reject(transaction.error);
+    });
+    database.close();
+  } catch (error) {
+    console.warn("저장된 FIT 파일 삭제 실패", error);
+  }
+}
+
+async function openStoredActivity(id) {
+  setView(loadingView);
+  try {
+    const record = await getStoredActivityFile(id);
+    if (!record?.blob) throw new Error("이 기록은 분석 요약만 저장되어 있습니다. 해당 FIT 파일을 한 번 다시 업로드해주세요.");
+    const file = new File([record.blob], record.name || "activity.fit", {
+      type: record.type,
+      lastModified: record.lastModified,
+    });
+    activity = await decodeFitFile(file);
+    renderDashboard(activity);
+    setView(dashboardView);
+    window.requestAnimationFrame(() => dashboardView.scrollIntoView({ block: "start", behavior: "smooth" }));
+  } catch (error) {
+    console.error(error);
+    window.alert(error.message || "저장된 러닝을 다시 열 수 없습니다.");
+    setView(uploadView);
   }
 }
 
@@ -1113,8 +1219,10 @@ function renderDashboard(data) {
     ["운동 시간", formatDuration(data.totalTime), ""],
     ["평균 페이스", formatPace(speedToPace(data.averageSpeed)), "/km"],
     ["평균 심박", roundOrDash(data.averageHeartRate), "bpm"],
+    ["최대 심박", roundOrDash(data.maxHeartRate), "bpm"],
     ["평균 케이던스", roundOrDash(data.averageCadence), "spm"],
     ["상승 고도", roundOrDash(data.ascent), "m"],
+    ["소모 칼로리", data.calories > 0 ? Math.round(data.calories) : "--", "kcal"],
   ];
   $("#summaryGrid").innerHTML = summaries.map(([label, value, unit]) => `
     <article class="summary-card"><span>${label}</span><strong>${value}</strong><small>${unit}</small></article>
@@ -1125,6 +1233,7 @@ function renderDashboard(data) {
   renderVdotCoach(data);
   renderTimeline("pace");
   renderSplits(data);
+  renderHeartPaceAnalysis(data);
   renderHeartRateZones(data);
   renderRoute(data);
   renderDynamics(data);
@@ -1344,15 +1453,51 @@ function renderTimeline(key) {
 }
 
 function renderSplits(data) {
-  const computed = data.laps.length ? data.laps.map(lapToSplit) : computeKilometerSplits(data.points);
+  const computed = getActivitySplits(data);
   $("#splitsBody").innerHTML = computed.length ? computed.map((split, index) => `
     <tr>
       <td>${index + 1}${split.partial ? "*" : ""} km</td>
       <td>${formatPace(split.pace)} /km</td>
       <td>${roundOrDash(split.heartRate)} bpm</td>
+      <td>${roundOrDash(split.maxHeartRate)} bpm</td>
       <td>${formatSigned(split.elevation)} m</td>
     </tr>
-  `).join("") : `<tr><td colspan="4">구간 데이터를 찾지 못했습니다.</td></tr>`;
+  `).join("") : `<tr><td colspan="5">구간 데이터를 찾지 못했습니다.</td></tr>`;
+}
+
+function getActivitySplits(data) {
+  return data.laps.length ? data.laps.map(lapToSplit) : computeKilometerSplits(data.points);
+}
+
+function renderHeartPaceAnalysis(data) {
+  const splits = getActivitySplits(data).filter((split) => Number.isFinite(split.pace));
+  const usable = splits.map((split, sourceIndex) => ({ ...split, sourceIndex })).filter((split) => Number.isFinite(split.heartRate));
+  if (!usable.length) {
+    $("#heartPaceInsight").textContent = "심박 데이터가 없어 페이스와 심박의 관계를 계산할 수 없습니다.";
+    $("#heartPaceMetrics").innerHTML = '<div class="heart-pace-empty">심박이 포함된 FIT 파일을 업로드해주세요.</div>';
+    return;
+  }
+
+  let surge = null;
+  for (let index = 1; index < usable.length; index += 1) {
+    const increase = usable[index].heartRate - usable[index - 1].heartRate;
+    if (!surge || increase > surge.increase) surge = { index, increase, split: usable[index] };
+  }
+  const peak = usable.reduce((best, split, index) => {
+    const value = firstNullableNumber(split.maxHeartRate, split.heartRate);
+    return !best || value > best.value ? { split, index, value } : best;
+  }, null);
+  const surgeText = surge && surge.increase >= 3
+    ? `${surge.split.sourceIndex + 1}km 구간에서 이전 측정 구간보다 평균 심박이 ${Math.round(surge.increase)}bpm 상승했습니다. 당시 페이스는 ${formatPace(surge.split.pace)}/km였습니다.`
+    : "구간 사이에 뚜렷한 평균 심박 급상승은 발견되지 않았습니다.";
+  $("#heartPaceInsight").textContent = `${surgeText} 심박 상승은 경사·기온·피로의 영향도 받을 수 있습니다.`;
+  $("#heartPaceMetrics").innerHTML = splits.map((split, index) => `
+    <article class="heart-pace-card ${peak?.split.sourceIndex === index ? "peak" : ""}">
+      <span>${index + 1}${split.partial ? "*" : ""}KM</span>
+      <strong>${formatPace(split.pace)}<small>/km</small></strong>
+      <p>평균 ${roundOrDash(split.heartRate)} · 최대 ${roundOrDash(split.maxHeartRate)} bpm</p>
+    </article>
+  `).join("");
 }
 
 function renderHeartRateZones(data) {
@@ -1542,6 +1687,7 @@ function splitFromPoints(start, end, points, partial) {
   return {
     pace: (end.elapsed - start.elapsed) / distanceKm,
     heartRate: average(points.map((point) => point.heartRate)),
+    maxHeartRate: maximum(points.map((point) => point.heartRate)),
     elevation: Number.isFinite(start.altitude) && Number.isFinite(end.altitude) ? end.altitude - start.altitude : null,
     partial,
   };
@@ -1553,6 +1699,7 @@ function lapToSplit(lap) {
   return {
     pace: seconds / Math.max(distanceKm, 0.01),
     heartRate: firstNullableNumber(lap.avgHeartRate),
+    maxHeartRate: firstNullableNumber(lap.maxHeartRate),
     elevation: firstNullableNumber(lap.totalAscent),
     partial: distanceKm < 0.95,
   };

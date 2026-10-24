@@ -8,12 +8,12 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <title>STRION</title>
-    <link rel="manifest" href="manifest.webmanifest?v=20261024-11" />
+    <link rel="manifest" href="manifest.webmanifest?v=20261024-12" />
     <link rel="icon" href="strion-icon.svg" type="image/svg+xml" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Gowun+Dodum&family=Orbitron:wght@500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="styles.css?v=20261024-11" />
+    <link rel="stylesheet" href="styles.css?v=20261024-12" />
   </head>
   <body>
     <div class="noise" aria-hidden="true"></div>
@@ -227,9 +227,16 @@
                 <span>러닝 횟수<strong id="historyCount">0회</strong></span>
                 <span>누적 시간<strong id="historyDuration">0:00</strong></span>
               </div>
+              <div class="history-reopen-controls">
+                <label for="savedActivitySelect">날짜로 이전 분석 보기</label>
+                <div>
+                  <select id="savedActivitySelect" aria-label="저장된 러닝 날짜 선택"></select>
+                  <button id="openSavedActivityButton" class="mini-button" type="button">기록 열기</button>
+                </div>
+              </div>
               <div class="history-chart-wrap"><canvas id="historyChart"></canvas></div>
               <div id="activityHistoryList" class="activity-history-list"></div>
-              <p class="storage-note">FIT 원본은 전송하지 않으며 분석 요약만 이 브라우저에 저장됩니다.</p>
+              <p class="storage-note">FIT 원본과 분석 요약은 외부로 전송하지 않고 이 브라우저에만 저장됩니다. 이전에 요약만 저장된 기록은 FIT 파일을 한 번 다시 업로드해야 합니다.</p>
             </article>
           </div>
 
@@ -365,6 +372,17 @@
           <div class="chart-wrap"><canvas id="timelineChart"></canvas></div>
         </section>
 
+        <section id="heartPacePanel" class="panel heart-pace-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="section-label">PACE × HEART RATE</p>
+              <h2>페이스별 심박 반응</h2>
+            </div>
+          </div>
+          <p id="heartPaceInsight" class="heart-pace-insight">거리별 페이스와 심박 변화를 비교합니다.</p>
+          <div id="heartPaceMetrics" class="heart-pace-metrics"></div>
+        </section>
+
         <div class="two-column">
           <section class="panel">
             <div class="panel-heading">
@@ -375,7 +393,7 @@
             </div>
             <div class="table-wrap">
               <table>
-                <thead><tr><th>구간</th><th>페이스</th><th>심박</th><th>고도차</th></tr></thead>
+                <thead><tr><th>구간</th><th>페이스</th><th>평균 심박</th><th>최대 심박</th><th>고도차</th></tr></thead>
                 <tbody id="splitsBody"></tbody>
               </table>
             </div>
@@ -495,6 +513,6 @@
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-    <script type="module" src="app.js?v=20261024-11"></script>
+    <script type="module" src="app.js?v=20261024-12"></script>
   </body>
 </html>
