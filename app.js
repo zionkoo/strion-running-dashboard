@@ -14,6 +14,7 @@ let paceStrategyChart = null;
 let historyChart = null;
 let dynamicsCharts = [];
 let selectedPaceStrategy = "even";
+let currentPaceBlueprint = [];
 let calendarCursor = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
 let deferredInstallPrompt = null;
 
@@ -98,6 +99,7 @@ $("#paceStrategyButtons").addEventListener("click", (event) => {
   updateGoalPaceAnalyzer();
 });
 $("#strategyStrength").addEventListener("change", updateGoalPaceAnalyzer);
+$("#downloadPaceCsvButton").addEventListener("click", downloadPaceStrategyCsv);
 $("#workoutPlanForm").addEventListener("submit", saveWorkoutPlan);
 $("#workoutPlanList").addEventListener("click", handleWorkoutPlanAction);
 $("#activityHistoryList").addEventListener("click", deleteActivitySummary);
@@ -407,6 +409,8 @@ function renderPaceBlueprint(segments, averagePace) {
   };
   $("#strategyDescription").textContent = descriptions[selectedPaceStrategy];
   $("#strategyStrength").disabled = selectedPaceStrategy === "even";
+  currentPaceBlueprint = segments;
+  $("#downloadPaceCsvButton").disabled = !segments.length;
 
   $("#paceStrategyRows").innerHTML = segments.length
     ? segments.map((segment) => `<tr><td>${segment.distance < 1 ? `${segment.distance.toFixed(3)}km` : `${segment.index}km`}</td><td>${formatPace(segment.pace)}/km</td><td>${formatDuration(segment.cumulative)}</td></tr>`).join("")
@@ -435,6 +439,43 @@ function renderPaceBlueprint(segments, averagePace) {
       },
     },
   });
+}
+
+function downloadPaceStrategyCsv() {
+  if (!currentPaceBlueprint.length) return;
+
+  const calculator = $("#goalPaceCalculator");
+  const distance = Number(calculator.querySelector('[name="paceDistance"]').value);
+  const goalTime = calculator.querySelector('[name="paceGoalTime"]').value.trim();
+  const strategyLabels = { positive: "포지티브", even: "이븐", negative: "네거티브" };
+  const distanceNames = { 10: "10K", 21.0975: "HALF", 42.195: "FULL" };
+  const rows = [
+    ["STRION 레이스 운영 전략"],
+    ["종목", distanceLabel(distance)],
+    ["목표 기록", goalTime],
+    ["운영 전략", strategyLabels[selectedPaceStrategy]],
+    ["구간", "구간 거리(km)", "목표 페이스(/km)", "구간 기록", "누적 기록"],
+    ...currentPaceBlueprint.map((segment) => [
+      segment.distance < 1 ? "FINISH" : `${segment.index}km`,
+      segment.distance.toFixed(3).replace(/\.?0+$/, ""),
+      formatPace(segment.pace),
+      formatDuration(segment.seconds),
+      formatDuration(segment.cumulative),
+    ]),
+  ];
+  const csv = rows.map((row) => row.map(csvCell).join(",")).join("\r\n");
+  const url = URL.createObjectURL(new Blob(["\uFEFF", csv], { type: "text/csv;charset=utf-8" }));
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `STRION_${distanceNames[distance] || `${distance}K`}_${selectedPaceStrategy}_pace-plan.csv`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+function csvCell(value) {
+  return `"${String(value ?? "").replaceAll('"', '""')}"`;
 }
 
 function parseDurationInput(value) {

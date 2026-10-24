@@ -246,7 +246,21 @@ main { min-height: calc(100vh - 150px); }
 .strategy-buttons button.active { color: var(--cyan); background: transparent; font-weight: 700; }
 .strategy-strength { color: #9b9c95; font-size: .68rem; }
 .strategy-strength select { display: block; margin-top: 5px; padding: 8px 10px; border: 1px solid #4a4b46; color: white; background: #262724; }
-.strategy-description { margin: 13px 0 18px; color: #9b9c95; font-size: .78rem; }
+.strategy-summary-row { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin: 13px 0 18px; }
+.strategy-description { margin: 0; color: #9b9c95; font-size: .78rem; }
+.pace-csv-button {
+  flex: 0 0 auto;
+  padding: 9px 14px;
+  border: 1px solid rgba(80,236,255,.38);
+  border-radius: 999px;
+  color: var(--cyan);
+  background: rgba(80,236,255,.07);
+  font-size: .72rem;
+  font-weight: 700;
+  box-shadow: 0 0 12px rgba(80,236,255,.1);
+}
+.pace-csv-button:hover:not(:disabled) { background: rgba(80,236,255,.14); box-shadow: 0 0 18px rgba(80,236,255,.2); }
+.pace-csv-button:disabled { border-color: rgba(133,134,127,.24); color: #666b70; background: transparent; box-shadow: none; cursor: not-allowed; }
 .pace-blueprint-body { display: grid; grid-template-columns: 1.35fr .65fr; gap: 18px; }
 .pace-blueprint-chart { min-width: 0; height: 280px; padding: 15px; background: #222320; }
 .pace-split-table-wrap { max-height: 280px; overflow: auto; border: 1px solid #3f403b; }
@@ -803,6 +817,8 @@ footer b { color: var(--ink); letter-spacing: .12em; }
   .pace-blueprint-controls { grid-template-columns: 1fr; align-items: start; }
   .strategy-buttons { width: 100%; }
   .strategy-buttons button { flex: 1; }
+  .strategy-summary-row { align-items: flex-start; flex-direction: column; }
+  .pace-csv-button { width: 100%; }
   .training-center-heading { display: block; }
   .training-center-heading > p { margin-top: 8px; text-align: left; }
   .workout-plan-form { grid-template-columns: 1fr; }
