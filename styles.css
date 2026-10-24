@@ -753,6 +753,18 @@ footer {
 }
 
 footer b { color: var(--ink); letter-spacing: .12em; }
+.footer-signature { display: flex; align-items: center; gap: 14px; }
+.footer-signature em {
+  padding: 4px 8px;
+  color: var(--cyan);
+  border: 1px solid rgba(80, 236, 255, .28);
+  background: rgba(80, 236, 255, .05);
+  box-shadow: 0 0 12px rgba(80, 236, 255, .08);
+  font-family: "Orbitron", sans-serif;
+  font-size: .62rem;
+  font-style: normal;
+  letter-spacing: .11em;
+}
 
 @media (max-width: 980px) {
   .goal-pace-lab { grid-template-columns: 1fr 1.5fr; }
@@ -830,6 +842,7 @@ footer b { color: var(--ink); letter-spacing: .12em; }
   .weekly-goal-form button { grid-column: 1 / -1; }
   .calendar-day { min-height: 43px; padding: 4px; }
   footer { flex-direction: column; padding-inline: 17px; }
+  .footer-signature { align-items: flex-start; flex-direction: column; gap: 8px; }
 }
 
 /* STRION NEO: a lightweight cyber-running HUD skin. */
