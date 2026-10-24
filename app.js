@@ -485,6 +485,7 @@ function saveRace(event) {
   renderSavedRaces();
   event.currentTarget.reset();
   updateTargetPacePreview();
+  $("#profileDialog").close();
 }
 
 function savePersonalBests(event) {
@@ -497,6 +498,7 @@ function savePersonalBests(event) {
   persistRunnerProfile();
   renderPersonalHub();
   if (activity) renderVdotCoach(activity);
+  $("#profileDialog").close();
 }
 
 function renderSavedRaces() {
@@ -877,7 +879,7 @@ async function analyzeFiles(files) {
       $("#fileName").textContent = `${decodedActivities.length}개 파일 · 최근 기록 표시`;
     }
     setView(dashboardView);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    window.requestAnimationFrame(() => dashboardView.scrollIntoView({ block: "start", behavior: "smooth" }));
   } catch (error) {
     console.error(error);
     showError(error.message || "파일이 손상되었거나 지원하지 않는 FIT 파일입니다.");

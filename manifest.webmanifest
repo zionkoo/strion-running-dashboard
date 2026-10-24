@@ -1,7 +1,7 @@
 {
   "name": "STRION · Running Dashboard",
   "short_name": "STRION",
-  "description": "Garmin FIT 데이터를 기기 안에서 분석하는 러닝 대시보드",
+  "description": "Garmin FIT 데이터를 잭 다니엘스 VDOT 관점으로 분석하는 러닝 대시보드",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
