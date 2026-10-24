@@ -108,22 +108,38 @@ button { cursor: pointer; }
 }
 
 .live-clock {
-  display: grid;
-  grid-template-columns: auto auto;
-  align-items: baseline;
-  gap: 14px;
+  display: flex;
+  align-items: center;
+  gap: 18px;
   margin-left: auto;
   margin-right: 28px;
   color: var(--muted);
   font-size: .72rem;
 }
-.live-clock strong {
+.current-moment { display: grid; grid-template-columns: auto auto; align-items: baseline; gap: 14px; }
+.current-moment strong {
   color: var(--cyan, #50ecff);
   font-family: "Orbitron", sans-serif;
   font-size: 1.05rem;
   font-weight: 600;
   letter-spacing: .08em;
 }
+.header-race-countdown {
+  min-width: 0;
+  max-width: 310px;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding-left: 17px;
+  border-left: 1px solid rgba(80,236,255,.24);
+  color: inherit;
+  text-decoration: none;
+}
+.header-race-countdown > span { min-width: 0; display: grid; line-height: 1.25; }
+.header-race-countdown small { color: var(--muted); font: 500 .43rem "Orbitron", sans-serif; letter-spacing: .12em; }
+.header-race-countdown b { overflow: hidden; color: var(--ink); font-size: .68rem; font-weight: 400; text-overflow: ellipsis; white-space: nowrap; }
+.header-race-countdown > strong { flex: 0 0 auto; color: var(--cyan); font: 600 .86rem "Orbitron", sans-serif; text-shadow: 0 0 10px rgba(80,236,255,.48); white-space: nowrap; }
+.header-race-countdown:hover b { color: var(--cyan); }
 
 .weather-deck {
   max-width: 1240px;
@@ -445,6 +461,10 @@ main { min-height: calc(100vh - 150px); }
 .settings-form label { display: flex; flex-direction: column; gap: 6px; color: var(--muted); font-size: .8rem; }
 .settings-form input, .settings-form select { width: 100%; border: 1px solid var(--line); background: white; color: var(--ink); padding: 12px 13px; border-radius: 4px; }
 .settings-form input:focus, .settings-form select:focus { outline: 2px solid var(--orange); border-color: transparent; }
+.settings-form .calendar-option { display: grid; grid-template-columns: auto 1fr; align-items: center; column-gap: 9px; padding: 12px 13px; border: 1px solid var(--line); background: rgba(80,236,255,.04); }
+.settings-form .calendar-option input { width: 18px; height: 18px; margin: 0; accent-color: var(--cyan); }
+.settings-form .calendar-option span { color: var(--ink); }
+.settings-form .calendar-option small { grid-column: 2; color: var(--muted); font-size: .66rem; line-height: 1.45; }
 .input-guide {
   min-height: 1.2em;
   color: #898a82;
@@ -470,6 +490,9 @@ main { min-height: calc(100vh - 150px); }
 .saved-race-list { margin-top: 18px; }
 .saved-race-row { display: grid; grid-template-columns: 1fr auto; gap: 12px; padding: 11px 0; border-bottom: 1px solid var(--line); }
 .saved-race-row span { display: block; color: var(--muted); font-size: .76rem; margin-top: 3px; }
+.saved-race-actions { display: flex; align-items: center; gap: 6px; }
+.calendar-button { padding: 7px 9px; color: var(--cyan); border: 1px solid rgba(80,236,255,.28); background: rgba(4,12,19,.7); font-size: .68rem; text-decoration: none; white-space: nowrap; }
+.calendar-button:hover { color: #03100d; background: var(--cyan); }
 .delete-button { border: 0; color: var(--red); background: transparent; }
 .settings-note { color: var(--muted); font-size: .78rem; line-height: 1.6; margin-top: 18px; }
 
@@ -1182,7 +1205,16 @@ footer { border-color: var(--line); }
 
 @media (max-width: 640px) {
   .topbar { flex-wrap: wrap; height: auto; min-height: 64px; padding-block: 10px; }
-  .live-clock { order: 3; width: 100%; margin: 8px 0 0; justify-content: space-between; border-top: 1px solid var(--line); padding-top: 7px; }
+  .install-app-button { order: 2; margin-left: auto; }
+  .live-clock { order: 3; width: 100%; margin: 8px 0 0; justify-content: space-between; gap: 10px; border-top: 1px solid var(--line); padding-top: 7px; }
+  .current-moment { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; }
+  .current-moment span { font-size: .58rem; }
+  .current-moment strong { font-size: .86rem; }
+  .header-race-countdown { max-width: min(58vw, 260px); justify-content: flex-end; gap: 8px; padding-left: 10px; }
+  .header-race-countdown b { font-size: .62rem; }
+  .header-race-countdown > strong { font-size: .76rem; }
+  .saved-race-row { grid-template-columns: 1fr; }
+  .saved-race-actions { justify-content: flex-end; }
   .weather-deck { margin: 10px 10px 0; padding: 12px; grid-template-columns: 1fr; }
   .weather-deck-heading { flex-direction: row; align-items: center; padding: 0 0 10px; border-right: 0; border-bottom: 1px solid var(--line); }
   .weather-forecast { display: flex; overflow-x: auto; padding-bottom: 4px; scroll-snap-type: x mandatory; }

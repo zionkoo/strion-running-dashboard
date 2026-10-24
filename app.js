@@ -17,6 +17,7 @@ let selectedPaceStrategy = "even";
 let currentPaceCsvUrl = null;
 let calendarCursor = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
 let deferredInstallPrompt = null;
+let liveClockDateKey = "";
 
 const PROFILE_STORAGE_KEY = "strionProfileV1";
 const COLLAPSE_STORAGE_KEY = "strionCollapsedSectionsV1";
@@ -148,8 +149,11 @@ $("#workoutPlanForm").elements.date.value = toDateInputValue(new Date());
 function startLiveClock() {
   const update = () => {
     const now = new Date();
+    const dateKey = toDateInputValue(now);
     $("#currentDate").textContent = new Intl.DateTimeFormat("ko-KR", { month: "long", day: "numeric", weekday: "long" }).format(now);
     $("#currentTime").textContent = new Intl.DateTimeFormat("ko-KR", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false }).format(now);
+    if (liveClockDateKey && liveClockDateKey !== dateKey) renderPersonalHub();
+    liveClockDateKey = dateKey;
   };
   update();
   window.setInterval(update, 1000);
@@ -310,6 +314,9 @@ function renderPersonalHub() {
     $("#raceDday").textContent = next.days === 0 ? "D-DAY" : `D–${next.days}`;
     $("#raceTargetTime").textContent = next.targetTime;
     $("#raceTargetPace").textContent = `${formatPace(parseClockTime(next.targetTime) / Number(next.distance))} /km`;
+    $("#headerRaceName").textContent = next.name;
+    $("#headerRaceDday").textContent = next.days === 0 ? "D-DAY" : `D–${next.days}`;
+    $("#headerRaceCountdown").classList.remove("hidden");
   } else {
     card.classList.add("empty");
     $("#nextRaceName").textContent = "다음 대회를 등록하세요";
@@ -317,6 +324,7 @@ function renderPersonalHub() {
     $("#raceDday").textContent = "D–?";
     $("#raceTargetTime").textContent = "--:--:--";
     $("#raceTargetPace").textContent = "--:-- /km";
+    $("#headerRaceCountdown").classList.add("hidden");
   }
 
   const pbLabels = [["5k", "5K"], ["10k", "10K"], ["half", "HALF"], ["full", "FULL"]];
@@ -515,19 +523,23 @@ function normalizeDurationField(event) {
 function saveRace(event) {
   event.preventDefault();
   const data = new FormData(event.currentTarget);
-  runnerProfile.races.push({
+  const race = {
     id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}`,
     name: String(data.get("name")).trim(),
     date: String(data.get("date")),
     distance: Number(data.get("distance")),
     targetTime: normalizeClockTime(String(data.get("targetTime"))),
     location: String(data.get("location")).trim(),
-  });
+  };
+  const addToCalendar = data.get("addToCalendar") === "on";
+  runnerProfile.races.push(race);
   runnerProfile.races.sort((a, b) => a.date.localeCompare(b.date));
   persistRunnerProfile();
   renderPersonalHub();
   renderSavedRaces();
+  if (addToCalendar) downloadRaceCalendar(race);
   event.currentTarget.reset();
+  event.currentTarget.elements.addToCalendar.checked = true;
   updateTargetPacePreview();
   $("#profileDialog").close();
 }
@@ -550,10 +562,61 @@ function renderSavedRaces() {
     ? runnerProfile.races.map((race) => `
       <div class="saved-race-row">
         <div><strong>${escapeHtml(race.name)}</strong><span>${formatRaceDate(race.date)} · ${distanceLabel(race.distance)} · 목표 ${escapeHtml(race.targetTime)} · ${formatPace(parseClockTime(race.targetTime) / Number(race.distance))}/km</span></div>
-        <button class="delete-button" type="button" data-race-id="${race.id}">삭제</button>
+        <div class="saved-race-actions">
+          <a class="calendar-button" href="${raceCalendarHref(race)}" download="${escapeHtml(calendarFileName(race))}">캘린더 추가</a>
+          <button class="delete-button" type="button" data-race-id="${race.id}">삭제</button>
+        </div>
       </div>
     `).join("")
     : '<p class="empty-copy">저장된 대회가 없습니다.</p>';
+}
+
+function downloadRaceCalendar(race) {
+  const link = document.createElement("a");
+  link.href = raceCalendarHref(race);
+  link.download = calendarFileName(race);
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+}
+
+function raceCalendarHref(race) {
+  return `data:text/calendar;charset=utf-8,${encodeURIComponent(buildRaceCalendar(race))}`;
+}
+
+function buildRaceCalendar(race) {
+  const startDate = race.date.replaceAll("-", "");
+  const end = dateFromInput(race.date);
+  end.setDate(end.getDate() + 1);
+  const endDate = `${end.getFullYear()}${String(end.getMonth() + 1).padStart(2, "0")}${String(end.getDate()).padStart(2, "0")}`;
+  const pace = formatPace(parseClockTime(race.targetTime) / Number(race.distance));
+  const description = `STRION 목표 기록 ${race.targetTime} / 목표 페이스 ${pace}/km`;
+  const lines = [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//STRION//Race Calendar//KO",
+    "CALSCALE:GREGORIAN",
+    "METHOD:PUBLISH",
+    "BEGIN:VEVENT",
+    `UID:${icsText(race.id)}@strion-running-dashboard`,
+    `DTSTAMP:${new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "")}`,
+    `DTSTART;VALUE=DATE:${startDate}`,
+    `DTEND;VALUE=DATE:${endDate}`,
+    `SUMMARY:${icsText(`${race.name} (${distanceLabel(race.distance)})`)}`,
+    `DESCRIPTION:${icsText(description)}`,
+  ];
+  if (race.location) lines.push(`LOCATION:${icsText(race.location)}`);
+  lines.push("END:VEVENT", "END:VCALENDAR");
+  return `${lines.join("\r\n")}\r\n`;
+}
+
+function icsText(value) {
+  return String(value || "").replaceAll("\\", "\\\\").replaceAll(";", "\\;").replaceAll(",", "\\,").replace(/\r?\n/g, "\\n");
+}
+
+function calendarFileName(race) {
+  const safeName = String(race.name || "race").replace(/[\\/:*?"<>|]/g, "-").trim() || "race";
+  return `STRION_${race.date}_${safeName}.ics`;
 }
 
 function deleteRace(event) {
@@ -879,11 +942,13 @@ async function importRunnerData(event) {
 
 function initializePwa() {
   if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("./sw.js?v=20261024-3").catch(() => {});
+    navigator.serviceWorker.register("./sw.js?v=20261024-10").catch(() => {});
   }
   const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isAndroid = /android/i.test(navigator.userAgent);
+  const isMobile = isIos || isAndroid || /mobile/i.test(navigator.userAgent);
   const isStandalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone;
-  if (isIos && !isStandalone) $("#installAppButton").classList.remove("hidden");
+  if (isMobile && !isStandalone) $("#installAppButton").classList.remove("hidden");
   window.addEventListener("beforeinstallprompt", (event) => {
     event.preventDefault();
     deferredInstallPrompt = event;
@@ -896,14 +961,24 @@ function initializePwa() {
 }
 
 async function installStrionApp() {
+  const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isAndroid = /android/i.test(navigator.userAgent);
+  if (!deferredInstallPrompt && isIos) {
+    window.alert("iPhone/iPad에서는 Safari 하단의 공유 버튼을 누른 뒤 '홈 화면에 추가'를 선택해주세요.");
+    return;
+  }
+  if (!deferredInstallPrompt && isAndroid) {
+    window.alert("Android에서는 Chrome 오른쪽 위 메뉴(⋮)를 누른 뒤 '홈 화면에 추가'를 선택해주세요.");
+    return;
+  }
   if (!deferredInstallPrompt) {
-    window.alert("iPhone/iPad에서는 Safari 공유 버튼을 누른 뒤 '홈 화면에 추가'를 선택해주세요.");
+    window.alert("브라우저 메뉴에서 '홈 화면에 추가'를 선택해주세요.");
     return;
   }
   deferredInstallPrompt.prompt();
-  await deferredInstallPrompt.userChoice;
+  const choice = await deferredInstallPrompt.userChoice;
   deferredInstallPrompt = null;
-  $("#installAppButton").classList.add("hidden");
+  if (choice.outcome === "accepted") $("#installAppButton").classList.add("hidden");
 }
 
 async function analyzeFiles(files) {
