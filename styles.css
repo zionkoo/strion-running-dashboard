@@ -913,7 +913,10 @@ h1, h2, h3, .section-label, .card-kicker, .brand-lockup b,
 
 .section-label, .card-kicker, .control-label { color: var(--cyan); text-shadow: 0 0 10px rgba(80,236,255,.35); letter-spacing: .15em; }
 .race-dday, .primary-result strong, .vdot-score strong { color: var(--lime); text-shadow: 0 0 14px rgba(215,244,255,.32); }
-.next-race-card { background: linear-gradient(135deg, rgba(89,120,255,.14), rgba(7,13,21,.96) 55%); }
+.next-race-card,
+.next-race-card.empty {
+  background: linear-gradient(135deg, rgba(89,120,255,.14), rgba(7,13,21,.96) 55%);
+}
 .pb-item, .upcoming-race, .activity-history-row, .workout-plan-row, th, td { border-color: var(--line); }
 
 .goal-pace-calculator input, .goal-pace-calculator select, .strategy-strength select,
