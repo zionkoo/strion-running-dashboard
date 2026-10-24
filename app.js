@@ -537,11 +537,13 @@ function saveRace(event) {
   persistRunnerProfile();
   renderPersonalHub();
   renderSavedRaces();
-  if (addToCalendar) downloadRaceCalendar(race);
+  // Close first so mobile browsers do not leave the full-screen dialog open
+  // while handing the calendar file to another app.
+  $("#profileDialog").close();
   event.currentTarget.reset();
   event.currentTarget.elements.addToCalendar.checked = true;
   updateTargetPacePreview();
-  $("#profileDialog").close();
+  if (addToCalendar) window.setTimeout(() => downloadRaceCalendar(race), 80);
 }
 
 function savePersonalBests(event) {
@@ -942,27 +944,41 @@ async function importRunnerData(event) {
 
 function initializePwa() {
   if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("./sw.js?v=20261024-10").catch(() => {});
+    navigator.serviceWorker.register("./sw.js?v=20261024-11").catch(() => {});
   }
   const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
   const isAndroid = /android/i.test(navigator.userAgent);
   const isMobile = isIos || isAndroid || /mobile/i.test(navigator.userAgent);
   const isStandalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone;
-  if (isMobile && !isStandalone) $("#installAppButton").classList.remove("hidden");
+  const installButton = $("#installAppButton");
+  if (isMobile) {
+    installButton.classList.remove("hidden");
+    installButton.dataset.installed = isStandalone ? "true" : "false";
+    installButton.textContent = isStandalone ? "홈 화면 추가됨" : "홈 화면에 추가";
+  }
   window.addEventListener("beforeinstallprompt", (event) => {
     event.preventDefault();
     deferredInstallPrompt = event;
-    $("#installAppButton").classList.remove("hidden");
+    installButton.dataset.installed = "false";
+    installButton.textContent = "홈 화면에 추가";
+    installButton.classList.remove("hidden");
   });
   window.addEventListener("appinstalled", () => {
     deferredInstallPrompt = null;
-    $("#installAppButton").classList.add("hidden");
+    installButton.dataset.installed = "true";
+    installButton.textContent = "홈 화면 추가됨";
+    installButton.classList.remove("hidden");
   });
 }
 
 async function installStrionApp() {
   const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
   const isAndroid = /android/i.test(navigator.userAgent);
+  const isStandalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone;
+  if (isStandalone) {
+    window.alert("STRION이 이미 홈 화면에서 실행 중입니다.");
+    return;
+  }
   if (!deferredInstallPrompt && isIos) {
     window.alert("iPhone/iPad에서는 Safari 하단의 공유 버튼을 누른 뒤 '홈 화면에 추가'를 선택해주세요.");
     return;
@@ -978,7 +994,10 @@ async function installStrionApp() {
   deferredInstallPrompt.prompt();
   const choice = await deferredInstallPrompt.userChoice;
   deferredInstallPrompt = null;
-  if (choice.outcome === "accepted") $("#installAppButton").classList.add("hidden");
+  if (choice.outcome === "accepted") {
+    $("#installAppButton").dataset.installed = "true";
+    $("#installAppButton").textContent = "홈 화면 추가됨";
+  }
 }
 
 async function analyzeFiles(files) {

@@ -1111,6 +1111,11 @@ footer { border-color: var(--line); }
   letter-spacing: .08em;
 }
 .install-app-button:hover { color: #03100d; background: var(--cyan); box-shadow: 0 0 16px rgba(80,236,255,.35); }
+.install-app-button[data-installed="true"] { color: var(--muted); border-color: rgba(141,180,190,.28); }
+
+@media (max-width: 900px), (hover: none) and (pointer: coarse) {
+  .install-app-button.hidden { display: inline-flex !important; }
+}
 
 .run-score-panel {
   display: grid;
