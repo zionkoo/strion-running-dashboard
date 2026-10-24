@@ -1,0 +1,439 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="한 걸음의 데이터를 다음 진전으로 연결하는 Garmin FIT 러닝 대시보드" />
+    <title>STRION</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Gowun+Dodum&family=Orbitron:wght@500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="noise" aria-hidden="true"></div>
+    <header class="topbar">
+      <a class="brand" href="#" aria-label="STRION 처음으로">
+        <span class="brand-mark">S</span>
+        <span class="brand-lockup"><b>STRION</b><small>STRIDE ON</small></span>
+      </a>
+      <div class="live-clock" aria-label="현재 날짜와 시간">
+        <span id="currentDate">--월 --일 ---요일</span>
+        <strong id="currentTime">--:--:--</strong>
+      </div>
+      <div class="privacy-chip"><span></span> 파일은 이 기기에서만 분석됩니다</div>
+    </header>
+
+    <section class="weather-deck" aria-labelledby="weatherTitle">
+      <div class="weather-deck-heading">
+        <div><span class="card-kicker">RUN CONDITION</span><strong id="weatherTitle">서울 · 7일 러닝 예보</strong></div>
+        <div class="weather-actions">
+          <button id="useLocationButton" class="weather-location-button" type="button">현재 위치</button>
+          <a class="weather-source" href="https://open-meteo.com/" target="_blank" rel="noreferrer">DATA · OPEN-METEO</a>
+        </div>
+      </div>
+      <div id="weatherForecast" class="weather-forecast" aria-live="polite">
+        <p class="weather-loading">예보 데이터를 불러오는 중입니다.</p>
+      </div>
+    </section>
+
+    <main>
+      <section id="personalHub" class="personal-home">
+        <section class="race-command" aria-label="개인 러닝 목표">
+          <div class="race-command-heading">
+            <div>
+              <p class="section-label">THE NEXT STRIDE</p>
+              <h2>다음 출발선까지, 계속 앞으로</h2>
+            </div>
+            <button id="openProfileButton" class="outline-button" type="button">일정 · PB 설정</button>
+          </div>
+
+          <div class="race-command-grid">
+            <article id="nextRaceCard" class="next-race-card empty">
+              <div>
+                <span class="card-kicker">STRIDE TO THE NEXT START</span>
+                <h3 id="nextRaceName">다음 대회를 등록하세요</h3>
+                <p id="nextRaceMeta">일정과 목표 기록을 입력하면 D-day와 목표 페이스를 계산합니다.</p>
+              </div>
+              <strong id="raceDday" class="race-dday">D–?</strong>
+              <div class="race-targets">
+                <span>목표 기록 <b id="raceTargetTime">--:--:--</b></span>
+                <span>목표 페이스 <b id="raceTargetPace">--:-- /km</b></span>
+              </div>
+            </article>
+
+            <article class="pb-board">
+              <span class="card-kicker">PERSONAL BEST</span>
+              <div id="pbGrid" class="pb-grid"></div>
+            </article>
+
+            <article class="schedule-board">
+              <span class="card-kicker">RACE CALENDAR</span>
+              <div id="upcomingRaceList" class="upcoming-race-list"></div>
+            </article>
+          </div>
+        </section>
+
+        <section class="goal-pace-lab" aria-labelledby="goalPaceTitle">
+          <div class="goal-pace-heading">
+            <p class="section-label">GOAL PACE LAB</p>
+            <h2 id="goalPaceTitle">목표 페이스 분석</h2>
+            <p>대회 등록과 별개로 목표 기록을 입력해 레이스 페이스를 바로 확인하세요.</p>
+          </div>
+
+          <div id="goalPaceCalculator" class="goal-pace-calculator">
+            <label>종목
+              <select name="paceDistance">
+                <option value="10">10K</option>
+                <option value="21.0975">하프 마라톤</option>
+                <option value="42.195" selected>풀 마라톤</option>
+              </select>
+            </label>
+            <label>목표 기록
+              <input name="paceGoalTime" inputmode="numeric" autocomplete="off" placeholder="03:30:00" pattern="(?:\d{1,2}:)?[0-5]\d:[0-5]\d" />
+              <small>숫자만 입력 가능: 33000 → 03:30:00</small>
+            </label>
+          </div>
+
+          <div class="goal-pace-results" aria-live="polite">
+            <article class="primary-result"><span>목표 페이스</span><strong id="goalPacePerKm">--:--</strong><small>/km</small></article>
+            <article><span>트랙 400m</span><strong id="goalPace400">--:--</strong></article>
+            <article><span id="goalCheckpointLabel">하프 통과</span><strong id="goalCheckpointTime">--:--:--</strong></article>
+          </div>
+
+          <div class="pace-blueprint">
+            <div class="pace-blueprint-controls">
+              <div>
+                <span class="control-label">PACE BLUEPRINT</span>
+                <h3>레이스 운영 전략</h3>
+              </div>
+              <div id="paceStrategyButtons" class="strategy-buttons" aria-label="페이스 전략 선택">
+                <button type="button" data-strategy="positive">포지티브</button>
+                <button type="button" data-strategy="even" class="active">이븐</button>
+                <button type="button" data-strategy="negative">네거티브</button>
+              </div>
+              <label class="strategy-strength">변화 폭
+                <select id="strategyStrength">
+                  <option value="0.03">안정적 3%</option>
+                  <option value="0.05" selected>균형 5%</option>
+                  <option value="0.08">공격적 8%</option>
+                </select>
+              </label>
+            </div>
+            <p id="strategyDescription" class="strategy-description">처음부터 끝까지 같은 페이스를 유지하는 전략입니다.</p>
+            <div class="pace-blueprint-body">
+              <div class="pace-blueprint-chart"><canvas id="paceStrategyChart"></canvas></div>
+              <div class="pace-split-table-wrap">
+                <table class="pace-split-table">
+                  <thead><tr><th>구간</th><th>목표 페이스</th><th>누적</th></tr></thead>
+                  <tbody id="paceStrategyRows"><tr><td colspan="3">목표 기록을 입력해주세요.</td></tr></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="training-center" aria-labelledby="trainingCenterTitle">
+          <div class="training-center-heading">
+            <div>
+              <p class="section-label">TRAINING CYCLE</p>
+              <h2 id="trainingCenterTitle">훈련 계획과 러닝 기록</h2>
+            </div>
+            <p>계획을 세우고 FIT 기록을 쌓아 주간 흐름을 확인합니다.</p>
+          </div>
+
+          <div class="training-overview">
+            <article class="weekly-goal-card">
+              <div class="card-heading"><span class="card-kicker">THIS WEEK</span><h3>주간 목표</h3></div>
+              <form id="weeklyGoalForm" class="weekly-goal-form">
+                <label>거리 목표<input name="distance" type="number" inputmode="decimal" min="1" max="500" step="1" /><small>km</small></label>
+                <label>러닝 목표<input name="runs" type="number" inputmode="numeric" min="1" max="14" step="1" /><small>회</small></label>
+                <button class="mini-button" type="submit">목표 저장</button>
+              </form>
+              <div class="weekly-progress-list">
+                <div class="weekly-progress-copy"><span>거리</span><strong id="weeklyDistanceText">0 / 30 km</strong></div>
+                <div class="weekly-progress-track"><i id="weeklyDistanceBar"></i></div>
+                <div class="weekly-progress-copy"><span>횟수</span><strong id="weeklyRunsText">0 / 3회</strong></div>
+                <div class="weekly-progress-track"><i id="weeklyRunsBar"></i></div>
+              </div>
+            </article>
+
+            <article class="running-calendar-card">
+              <div class="calendar-heading">
+                <div><span class="card-kicker">RUNNING CALENDAR</span><h3 id="calendarTitle">이번 달</h3></div>
+                <div class="calendar-controls">
+                  <button id="previousMonthButton" class="mini-button" type="button" aria-label="이전 달">←</button>
+                  <button id="currentMonthButton" class="mini-button" type="button">오늘</button>
+                  <button id="nextMonthButton" class="mini-button" type="button" aria-label="다음 달">→</button>
+                </div>
+              </div>
+              <div class="calendar-weekdays" aria-hidden="true"><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span><span>일</span></div>
+              <div id="runningCalendar" class="running-calendar"></div>
+              <div class="calendar-legend"><span><i class="activity-dot"></i>완료 러닝</span><span><i class="plan-dot"></i>훈련 계획</span></div>
+            </article>
+          </div>
+
+          <div class="training-center-grid">
+            <article class="training-planner">
+              <div class="card-heading"><span class="card-kicker">PLAN</span><h3>운동 일정</h3></div>
+              <form id="workoutPlanForm" class="workout-plan-form">
+                <label>날짜<input name="date" type="date" required /></label>
+                <label>훈련 종류
+                  <select name="type">
+                    <option value="E">E · 이지/회복</option>
+                    <option value="M">M · 마라톤 페이스</option>
+                    <option value="T">T · 템포/역치</option>
+                    <option value="I">I · 인터벌</option>
+                    <option value="R">R · 반복주</option>
+                    <option value="L">L · 롱런</option>
+                  </select>
+                </label>
+                <label class="wide-field">운동명<input name="title" required placeholder="예: E 페이스 8km" /></label>
+                <label>목표 거리<input name="distance" inputmode="decimal" placeholder="8" /><small>km</small></label>
+                <label>목표 페이스<input name="targetPace" inputmode="numeric" placeholder="05:40" pattern="[0-9]{1,2}:[0-5][0-9]" /><small>분/km</small></label>
+                <button class="primary-button wide-field" type="submit">훈련 일정 추가</button>
+              </form>
+              <div id="workoutPlanList" class="workout-plan-list"></div>
+            </article>
+
+            <article class="training-history">
+              <div class="card-heading"><span class="card-kicker">LOAD</span><h3>최근 8주 러닝</h3></div>
+              <div class="history-summary">
+                <span>누적 거리<strong id="historyDistance">0.0 km</strong></span>
+                <span>러닝 횟수<strong id="historyCount">0회</strong></span>
+                <span>누적 시간<strong id="historyDuration">0:00</strong></span>
+              </div>
+              <div class="history-chart-wrap"><canvas id="historyChart"></canvas></div>
+              <div id="activityHistoryList" class="activity-history-list"></div>
+              <p class="storage-note">FIT 원본은 전송하지 않으며 분석 요약만 이 브라우저에 저장됩니다.</p>
+            </article>
+          </div>
+        </section>
+      </section>
+
+      <section id="uploadView" class="upload-view">
+
+        <div class="hero-copy">
+          <p class="eyebrow">STRION / STRIDE ON</p>
+          <h1>한 걸음씩<br /><em>계속 앞으로.</em></h1>
+          <p class="hero-description">
+            한 걸음의 데이터를 다음 걸음의 진전으로. Garmin 원본 FIT 파일에서 페이스, 심박, 케이던스,
+            고도와 구간 기록을 읽어 더 나은 다음 러닝으로 연결합니다.
+          </p>
+          <div class="stride-signature" aria-label="STRION 분석 과정">
+            <span>STRIDE</span><i>→</i><span>ANALYZE</span><i>→</i><span>ADVANCE</span><i>→</i><strong>ON</strong>
+          </div>
+        </div>
+
+        <div id="dropZone" class="drop-zone" tabindex="0" role="button" aria-label="FIT 파일 선택">
+          <input id="fileInput" type="file" accept=".fit,application/octet-stream" multiple hidden />
+          <div class="route-line" aria-hidden="true">
+            <span class="route-dot start"></span>
+            <svg viewBox="0 0 420 130" preserveAspectRatio="none">
+              <path d="M5 102 C70 8, 132 118, 198 56 S320 4, 414 75" />
+            </svg>
+            <span class="route-dot finish"></span>
+          </div>
+          <div class="upload-icon">FIT</div>
+          <h2>FIT 파일을 여기에 놓으세요</h2>
+          <p>또는 클릭해서 Garmin 활동 파일을 하나 이상 선택</p>
+          <button id="chooseFileButton" class="primary-button" type="button">FIT 파일 선택</button>
+          <small>지원 형식: .fit · 여러 파일을 한 번에 올리면 캘린더와 주간 기록에 함께 저장됩니다</small>
+        </div>
+
+        <div class="feature-strip" aria-label="지원 분석 항목">
+          <span>PACE</span><i></i><span>HEART RATE</span><i></i><span>SPLITS</span><i></i><span>ROUTE</span><i></i><span>RUNNING DYNAMICS</span>
+        </div>
+      </section>
+
+      <section id="loadingView" class="loading-view hidden" aria-live="polite">
+        <div class="runner-loader"></div>
+        <p>FIT 원본 데이터를 해석하고 있습니다</p>
+      </section>
+
+      <section id="dashboardView" class="dashboard hidden">
+        <div class="dashboard-heading">
+          <div>
+            <button id="newFileButton" class="text-button" type="button">← 다른 파일 분석</button>
+            <p id="activityMeta" class="eyebrow">STRIDE REVIEW</p>
+            <h1 id="activityTitle">오늘의 러닝</h1>
+          </div>
+          <div class="file-badge">
+            <span>ORIGINAL FIT</span>
+            <strong id="fileName">activity.fit</strong>
+          </div>
+        </div>
+
+        <section id="summaryGrid" class="summary-grid" aria-label="활동 요약"></section>
+
+        <section class="insight-panel">
+          <div class="section-label">NEXT STRIDE</div>
+          <div>
+            <h2 id="insightTitle">러닝을 분석했습니다.</h2>
+            <p id="insightText">데이터에서 확인한 핵심 내용을 정리합니다.</p>
+          </div>
+          <div id="effortBadge" class="effort-badge">STEADY</div>
+        </section>
+
+        <section id="vdotCoachPanel" class="panel vdot-coach-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="section-label">STRION COACH / VDOT REFERENCE</p>
+              <h2>현재 체력 기준 훈련 분석</h2>
+            </div>
+            <div class="vdot-score"><span>EST. VDOT</span><strong id="vdotScore">--</strong></div>
+          </div>
+          <div id="vdotEmpty" class="coach-empty">개인 PB를 등록하면 현재 체력 기준의 E·M·T·I·R 참고 페이스와 이번 훈련 분석이 표시됩니다.</div>
+          <div id="vdotCoachContent" class="vdot-coach-content hidden">
+            <div id="trainingPaceGrid" class="training-pace-grid"></div>
+            <article class="coach-verdict">
+              <span class="card-kicker">SESSION REVIEW</span>
+              <h3 id="coachVerdictTitle">훈련을 분석했습니다.</h3>
+              <p id="coachVerdictText"></p>
+            </article>
+          </div>
+          <p class="coach-disclaimer">최근 PB를 이용한 VDOT 원칙 기반 참고 정보이며 의료 조언이나 공인 코치의 처방을 대신하지 않습니다.</p>
+        </section>
+
+        <section class="panel chart-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="section-label">TIMELINE</p>
+              <h2>러닝 흐름</h2>
+            </div>
+            <div id="chartTabs" class="chart-tabs" role="tablist">
+              <button class="active" data-chart="pace" type="button">페이스</button>
+              <button data-chart="heartRate" type="button">심박</button>
+              <button data-chart="cadence" type="button">케이던스</button>
+              <button data-chart="power" type="button">파워</button>
+              <button data-chart="altitude" type="button">고도</button>
+            </div>
+          </div>
+          <div class="chart-wrap"><canvas id="timelineChart"></canvas></div>
+        </section>
+
+        <div class="two-column">
+          <section class="panel">
+            <div class="panel-heading">
+              <div>
+                <p class="section-label">KILOMETER SPLITS</p>
+                <h2>구간 페이스</h2>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>구간</th><th>페이스</th><th>심박</th><th>고도차</th></tr></thead>
+                <tbody id="splitsBody"></tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="panel zones-panel">
+            <div class="panel-heading">
+              <div>
+                <p class="section-label">HEART RATE ZONES</p>
+                <h2>심박 분포</h2>
+              </div>
+              <label class="max-hr-control">최대 심박
+                <input id="maxHeartRateInput" type="number" inputmode="numeric" min="100" max="240" placeholder="예: 190" />
+                <small>bpm</small>
+              </label>
+            </div>
+            <p id="zoneBasis" class="zone-basis">최대 심박을 입력하면 Z1–Z5 범위를 계산합니다.</p>
+            <div id="heartRateZones" class="zones-list"></div>
+          </section>
+        </div>
+
+        <section id="routePanel" class="panel route-panel hidden">
+          <div class="panel-heading">
+            <div>
+              <p class="section-label">GPS ROUTE / LOCAL RENDER</p>
+              <h2>달린 경로 스케치</h2>
+            </div>
+            <span class="local-route-badge">NO MAP ACCESS NEEDED</span>
+          </div>
+          <div id="routeMap" aria-label="FIT GPS 좌표로 그린 러닝 경로"></div>
+        </section>
+
+        <section id="dynamicsPanel" class="panel hidden">
+          <div class="panel-heading">
+            <div>
+              <p class="section-label">AVAILABLE SENSOR DATA</p>
+              <h2>러닝 다이나믹스</h2>
+            </div>
+          </div>
+          <div id="dynamicsCharts" class="dynamics-flow-grid"></div>
+          <div id="dynamicsGrid" class="dynamics-grid"></div>
+        </section>
+      </section>
+
+      <section id="errorView" class="error-view hidden" aria-live="assertive">
+        <div class="error-code">!</div>
+        <h2>파일을 분석하지 못했습니다</h2>
+        <p id="errorMessage">올바른 Garmin FIT 활동 파일인지 확인해주세요.</p>
+        <button id="retryButton" class="primary-button" type="button">다른 파일 선택</button>
+      </section>
+    </main>
+
+    <dialog id="profileDialog" class="profile-dialog">
+      <div class="dialog-heading">
+        <div>
+          <p class="section-label">STRION PROFILE</p>
+          <h2>대회 일정과 개인 기록</h2>
+        </div>
+        <button id="closeProfileButton" class="icon-button" type="button" aria-label="닫기">×</button>
+      </div>
+
+      <div class="profile-sections">
+        <section>
+          <h3>대회 추가</h3>
+          <form id="raceForm" class="settings-form">
+            <label>대회명<input name="name" required placeholder="예: 서울마라톤" /></label>
+            <label>대회 날짜
+              <input name="date" type="date" required />
+              <small class="input-guide">연도-월-일 · 예: 2027-03-21</small>
+            </label>
+            <label>종목
+              <select name="distance" required>
+                <option value="10">10K</option>
+                <option value="21.0975">하프 마라톤</option>
+                <option value="42.195" selected>풀 마라톤</option>
+              </select>
+            </label>
+            <label>목표 기록
+              <input name="targetTime" required inputmode="numeric" autocomplete="off" placeholder="03:30:00" pattern="(?:\d{1,2}:)?[0-5]\d:[0-5]\d" />
+              <small class="input-guide"><b>시</b> : <b>분</b> : <b>초</b> · 숫자만 입력 가능: 33000 → 03:30:00</small>
+            </label>
+            <output id="targetPacePreview" class="target-pace-preview wide-field" aria-live="polite">
+              <span>자동 계산 목표 페이스</span>
+              <strong>--:-- <small>/km</small></strong>
+            </output>
+            <label class="wide-field">장소<input name="location" placeholder="예: 서울 광화문" /></label>
+            <button class="primary-button wide-field" type="submit">일정 저장</button>
+          </form>
+          <div id="savedRaceList" class="saved-race-list"></div>
+        </section>
+
+        <section>
+          <h3>개인 PB</h3>
+          <form id="pbForm" class="settings-form pb-form">
+            <label>5K<input name="5k" inputmode="numeric" autocomplete="off" placeholder="00:24:00" pattern="(?:\d{1,2}:)?[0-5]\d:[0-5]\d" /><small class="input-guide">시 : 분 : 초 · 2400 → 00:24:00</small></label>
+            <label>10K<input name="10k" inputmode="numeric" autocomplete="off" placeholder="00:50:00" pattern="(?:\d{1,2}:)?[0-5]\d:[0-5]\d" /><small class="input-guide">시 : 분 : 초 · 5000 → 00:50:00</small></label>
+            <label>하프<input name="half" inputmode="numeric" autocomplete="off" placeholder="01:50:00" pattern="(?:\d{1,2}:)?[0-5]\d:[0-5]\d" /><small class="input-guide">시 : 분 : 초 · 15000 → 01:50:00</small></label>
+            <label>풀<input name="full" inputmode="numeric" autocomplete="off" placeholder="03:59:00" pattern="(?:\d{1,2}:)?[0-5]\d:[0-5]\d" /><small class="input-guide">시 : 분 : 초 · 35900 → 03:59:00</small></label>
+            <button class="primary-button wide-field" type="submit">PB 저장</button>
+          </form>
+          <p class="settings-note">일정과 PB는 이 브라우저에만 저장되며 서버로 전송되지 않습니다.</p>
+        </section>
+      </div>
+    </dialog>
+
+    <footer>
+      <span><b>STRION</b> · STRIDE ON</span>
+      <span>Powered by Garmin FIT SDK · Data stays in your browser</span>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+    <script type="module" src="app.js"></script>
+  </body>
+</html>
