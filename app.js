@@ -14,7 +14,7 @@ let paceStrategyChart = null;
 let historyChart = null;
 let dynamicsCharts = [];
 let selectedPaceStrategy = "even";
-let currentPaceBlueprint = [];
+let currentPaceCsvUrl = null;
 let calendarCursor = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
 let deferredInstallPrompt = null;
 
@@ -99,7 +99,9 @@ $("#paceStrategyButtons").addEventListener("click", (event) => {
   updateGoalPaceAnalyzer();
 });
 $("#strategyStrength").addEventListener("change", updateGoalPaceAnalyzer);
-$("#downloadPaceCsvButton").addEventListener("click", downloadPaceStrategyCsv);
+$("#downloadPaceCsvButton").addEventListener("click", (event) => {
+  if (event.currentTarget.getAttribute("aria-disabled") === "true") event.preventDefault();
+});
 $("#workoutPlanForm").addEventListener("submit", saveWorkoutPlan);
 $("#workoutPlanList").addEventListener("click", handleWorkoutPlanAction);
 $("#activityHistoryList").addEventListener("click", deleteActivitySummary);
@@ -409,8 +411,7 @@ function renderPaceBlueprint(segments, averagePace) {
   };
   $("#strategyDescription").textContent = descriptions[selectedPaceStrategy];
   $("#strategyStrength").disabled = selectedPaceStrategy === "even";
-  currentPaceBlueprint = segments;
-  $("#downloadPaceCsvButton").disabled = !segments.length;
+  updatePaceCsvDownload(segments);
 
   $("#paceStrategyRows").innerHTML = segments.length
     ? segments.map((segment) => `<tr><td>${segment.distance < 1 ? `${segment.distance.toFixed(3)}km` : `${segment.index}km`}</td><td>${formatPace(segment.pace)}/km</td><td>${formatDuration(segment.cumulative)}</td></tr>`).join("")
@@ -441,8 +442,14 @@ function renderPaceBlueprint(segments, averagePace) {
   });
 }
 
-function downloadPaceStrategyCsv() {
-  if (!currentPaceBlueprint.length) return;
+function updatePaceCsvDownload(segments) {
+  const link = $("#downloadPaceCsvButton");
+  if (currentPaceCsvUrl) URL.revokeObjectURL(currentPaceCsvUrl);
+  currentPaceCsvUrl = null;
+  link.removeAttribute("href");
+  link.removeAttribute("download");
+  link.setAttribute("aria-disabled", "true");
+  if (!segments.length) return;
 
   const calculator = $("#goalPaceCalculator");
   const distance = Number(calculator.querySelector('[name="paceDistance"]').value);
@@ -455,7 +462,7 @@ function downloadPaceStrategyCsv() {
     ["목표 기록", goalTime],
     ["운영 전략", strategyLabels[selectedPaceStrategy]],
     ["구간", "구간 거리(km)", "목표 페이스(/km)", "구간 기록", "누적 기록"],
-    ...currentPaceBlueprint.map((segment) => [
+    ...segments.map((segment) => [
       segment.distance < 1 ? "FINISH" : `${segment.index}km`,
       segment.distance.toFixed(3).replace(/\.?0+$/, ""),
       formatPace(segment.pace),
@@ -464,14 +471,10 @@ function downloadPaceStrategyCsv() {
     ]),
   ];
   const csv = rows.map((row) => row.map(csvCell).join(",")).join("\r\n");
-  const url = URL.createObjectURL(new Blob(["\uFEFF", csv], { type: "text/csv;charset=utf-8" }));
-  const link = document.createElement("a");
-  link.href = url;
+  currentPaceCsvUrl = URL.createObjectURL(new Blob(["\uFEFF", csv], { type: "text/csv;charset=utf-8" }));
+  link.href = currentPaceCsvUrl;
   link.download = `STRION_${distanceNames[distance] || `${distance}K`}_${selectedPaceStrategy}_pace-plan.csv`;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  link.setAttribute("aria-disabled", "false");
 }
 
 function csvCell(value) {

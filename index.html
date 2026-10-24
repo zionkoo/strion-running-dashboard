@@ -128,9 +128,9 @@
             </div>
             <div class="strategy-summary-row">
               <p id="strategyDescription" class="strategy-description">처음부터 끝까지 같은 페이스를 유지하는 전략입니다.</p>
-              <button id="downloadPaceCsvButton" class="pace-csv-button" type="button" disabled>
+              <a id="downloadPaceCsvButton" class="pace-csv-button" aria-disabled="true">
                 <span aria-hidden="true">↓</span> 거리별 페이스 CSV
-              </button>
+              </a>
             </div>
             <div class="pace-blueprint-body">
               <div class="pace-blueprint-chart"><canvas id="paceStrategyChart"></canvas></div>
@@ -484,6 +484,6 @@
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-    <script type="module" src="app.js?v=20261024-7"></script>
+    <script type="module" src="app.js?v=20261024-8"></script>
   </body>
 </html>

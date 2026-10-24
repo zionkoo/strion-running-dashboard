@@ -250,6 +250,10 @@ main { min-height: calc(100vh - 150px); }
 .strategy-description { margin: 0; color: #9b9c95; font-size: .78rem; }
 .pace-csv-button {
   flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
   padding: 9px 14px;
   border: 1px solid rgba(80,236,255,.38);
   border-radius: 999px;
@@ -257,10 +261,12 @@ main { min-height: calc(100vh - 150px); }
   background: rgba(80,236,255,.07);
   font-size: .72rem;
   font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
   box-shadow: 0 0 12px rgba(80,236,255,.1);
 }
-.pace-csv-button:hover:not(:disabled) { background: rgba(80,236,255,.14); box-shadow: 0 0 18px rgba(80,236,255,.2); }
-.pace-csv-button:disabled { border-color: rgba(133,134,127,.24); color: #666b70; background: transparent; box-shadow: none; cursor: not-allowed; }
+.pace-csv-button:hover:not([aria-disabled="true"]) { background: rgba(80,236,255,.14); box-shadow: 0 0 18px rgba(80,236,255,.2); }
+.pace-csv-button[aria-disabled="true"] { border-color: rgba(133,134,127,.24); color: #666b70; background: transparent; box-shadow: none; cursor: not-allowed; }
 .pace-blueprint-body { display: grid; grid-template-columns: 1.35fr .65fr; gap: 18px; }
 .pace-blueprint-chart { min-width: 0; height: 280px; padding: 15px; background: #222320; }
 .pace-split-table-wrap { max-height: 280px; overflow: auto; border: 1px solid #3f403b; }
