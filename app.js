@@ -741,13 +741,13 @@ function saveRace(event) {
   persistRunnerProfile();
   renderPersonalHub();
   renderSavedRaces();
+  if (addToCalendar) shareRaceCalendar(race);
   // Close first so mobile browsers do not leave the full-screen dialog open
-  // while handing the calendar file to another app.
+  // behind the native share sheet or calendar file preview.
   $("#profileDialog").close();
   event.currentTarget.reset();
   event.currentTarget.elements.addToCalendar.checked = true;
   updateTargetPacePreview();
-  if (addToCalendar) window.setTimeout(() => downloadRaceCalendar(race), 80);
 }
 
 function savePersonalBests(event) {
@@ -769,7 +769,7 @@ function renderSavedRaces() {
       <div class="saved-race-row">
         <div><strong>${escapeHtml(race.name)}</strong><span>${formatRaceDate(race.date)} · ${distanceLabel(race.distance)} · 목표 ${escapeHtml(race.targetTime)} · ${formatPace(parseClockTime(race.targetTime) / Number(race.distance))}/km</span></div>
         <div class="saved-race-actions">
-          <a class="calendar-button" href="${raceCalendarHref(race)}" download="${escapeHtml(calendarFileName(race))}">캘린더 추가</a>
+          <button class="calendar-button" type="button" data-calendar-race-id="${race.id}">캘린더로 보내기</button>
           <button class="delete-button" type="button" data-race-id="${race.id}">삭제</button>
         </div>
       </div>
@@ -777,17 +777,33 @@ function renderSavedRaces() {
     : '<p class="empty-copy">저장된 대회가 없습니다.</p>';
 }
 
-function downloadRaceCalendar(race) {
+async function shareRaceCalendar(race) {
+  const file = new File([buildRaceCalendar(race)], calendarFileName(race), { type: "text/calendar;charset=utf-8" });
+  if (navigator.share && navigator.canShare?.({ files: [file] })) {
+    try {
+      await navigator.share({
+        title: `${race.name} 일정`,
+        text: `${formatRaceDate(race.date)} · ${distanceLabel(race.distance)}`,
+        files: [file],
+      });
+      return;
+    } catch (error) {
+      if (error?.name === "AbortError") return;
+    }
+  }
+  downloadRaceCalendar(race, file);
+}
+
+function downloadRaceCalendar(race, calendarFile = null) {
+  const file = calendarFile || new File([buildRaceCalendar(race)], calendarFileName(race), { type: "text/calendar;charset=utf-8" });
+  const url = URL.createObjectURL(file);
   const link = document.createElement("a");
-  link.href = raceCalendarHref(race);
+  link.href = url;
   link.download = calendarFileName(race);
   document.body.appendChild(link);
   link.click();
   link.remove();
-}
-
-function raceCalendarHref(race) {
-  return `data:text/calendar;charset=utf-8,${encodeURIComponent(buildRaceCalendar(race))}`;
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 function buildRaceCalendar(race) {
@@ -826,6 +842,12 @@ function calendarFileName(race) {
 }
 
 function deleteRace(event) {
+  const calendarButton = event.target.closest("button[data-calendar-race-id]");
+  if (calendarButton) {
+    const race = runnerProfile.races.find((item) => item.id === calendarButton.dataset.calendarRaceId);
+    if (race) shareRaceCalendar(race);
+    return;
+  }
   const button = event.target.closest("button[data-race-id]");
   if (!button) return;
   runnerProfile.races = runnerProfile.races.filter((race) => race.id !== button.dataset.raceId);
