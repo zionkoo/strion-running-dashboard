@@ -1,10 +1,10 @@
-const CACHE_NAME = "strion-v12";
+const CACHE_NAME = "strion-v13";
 const CORE_ASSETS = [
   "./",
   "./index.html",
-  "./styles.css?v=20261024-12",
-  "./app.js?v=20261024-12",
-  "./manifest.webmanifest?v=20261024-12",
+  "./styles.css?v=20261024-13",
+  "./app.js?v=20261024-13",
+  "./manifest.webmanifest?v=20261024-13",
   "./strion-icon.svg",
 ];
 

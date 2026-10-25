@@ -24,6 +24,7 @@ Garmin 원본 `.fit` 러닝 파일을 브라우저에서 직접 분석하는 정
 - 업로드한 훈련을 현재 체력 기준으로 비교하는 STRION Coach 분석
 - Garmin 워크아웃 이름과 인터벌 랩 자동 인식
 - FIT 파일을 외부 서버로 전송하지 않고 브라우저 안에서 분석·보관
+- Garmin Personal API에서 최근 러닝을 직접 가져오는 선택형 동기화
 
 ## 실행
 
@@ -39,3 +40,7 @@ Garmin 원본 `.fit` 러닝 파일을 브라우저에서 직접 분석하는 정
 - Chart.js
 
 FIT 파일에 기록되지 않은 센서 항목은 화면에 표시되지 않습니다. 칼로리는 FIT에 포함된 기기 계산값을 사용하며 별도로 추정하지 않습니다.
+
+## Garmin 개인 동기화
+
+`garmin-worker/`의 Cloudflare Worker를 배포하면 Garmin Personal API 키를 공개하지 않고 최근 러닝을 가져올 수 있습니다. 자세한 과정은 `garmin-worker/README.md`를 참고하세요. 수동 FIT 업로드 기능은 Worker 설정 여부와 관계없이 계속 사용할 수 있습니다.

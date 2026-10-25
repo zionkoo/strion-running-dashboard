@@ -1,4 +1,5 @@
 import { Decoder, Stream } from "https://esm.sh/@garmin/fitsdk@21.218.0";
+import { unzipSync } from "https://esm.sh/fflate@0.8.2";
 
 const $ = (selector) => document.querySelector(selector);
 const uploadView = $("#uploadView");
@@ -23,7 +24,9 @@ const PROFILE_STORAGE_KEY = "strionProfileV1";
 const COLLAPSE_STORAGE_KEY = "strionCollapsedSectionsV1";
 const ACTIVITY_DB_NAME = "strionActivityStoreV1";
 const ACTIVITY_STORE_NAME = "fitFiles";
+const GARMIN_SETTINGS_KEY = "strionGarminSyncV1";
 let runnerProfile = loadRunnerProfile();
+let garminSettings = loadGarminSettings();
 
 const chartConfig = {
   pace: { label: "페이스", color: "#ff3df2", unit: "/km", reverse: true },
@@ -139,6 +142,13 @@ $("#exportDataButton").addEventListener("click", exportRunnerData);
 $("#importDataButton").addEventListener("click", () => $("#importDataInput").click());
 $("#importDataInput").addEventListener("change", importRunnerData);
 $("#installAppButton").addEventListener("click", installStrionApp);
+$("#openGarminSyncButton").addEventListener("click", openGarminSyncDialog);
+$("#openGarminSyncFromUploadButton").addEventListener("click", openGarminSyncDialog);
+$("#closeGarminSyncButton").addEventListener("click", () => $("#garminSyncDialog").close());
+$("#garminSyncForm").addEventListener("submit", saveGarminSyncSettings);
+$("#testGarminSyncButton").addEventListener("click", testGarminConnection);
+$("#syncGarminActivitiesButton").addEventListener("click", syncGarminActivities);
+$("#toggleGarminAccessCode").addEventListener("click", toggleGarminAccessCode);
 
 renderPersonalHub();
 updateGoalPaceAnalyzer();
@@ -286,6 +296,7 @@ function loadRunnerProfile() {
       pbs: saved?.pbs && typeof saved.pbs === "object" ? saved.pbs : {},
       workouts: Array.isArray(saved?.workouts) ? saved.workouts : [],
       activities: Array.isArray(saved?.activities) ? saved.activities : [],
+      garminActivityIds: Array.isArray(saved?.garminActivityIds) ? saved.garminActivityIds.map(String) : [],
       maxHeartRate: Number(saved?.maxHeartRate) || null,
       weeklyGoals: {
         distance: Number(saved?.weeklyGoals?.distance) || 30,
@@ -293,8 +304,189 @@ function loadRunnerProfile() {
       },
     };
   } catch {
-    return { races: [], pbs: {}, workouts: [], activities: [], maxHeartRate: null, weeklyGoals: { distance: 30, runs: 3 } };
+    return { races: [], pbs: {}, workouts: [], activities: [], garminActivityIds: [], maxHeartRate: null, weeklyGoals: { distance: 30, runs: 3 } };
   }
+}
+
+function loadGarminSettings() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(GARMIN_SETTINGS_KEY));
+    return {
+      endpoint: String(saved?.endpoint || ""),
+      accessCode: String(saved?.accessCode || ""),
+    };
+  } catch {
+    return { endpoint: "", accessCode: "" };
+  }
+}
+
+function openGarminSyncDialog() {
+  const form = $("#garminSyncForm");
+  form.elements.endpoint.value = garminSettings.endpoint;
+  form.elements.accessCode.value = garminSettings.accessCode;
+  form.elements.accessCode.type = "password";
+  $("#toggleGarminAccessCode").textContent = "보기";
+  updateGarminSyncState(
+    garminSettings.endpoint && garminSettings.accessCode ? "ready" : "idle",
+    garminSettings.endpoint && garminSettings.accessCode ? "연결 확인 준비" : "설정이 필요합니다",
+    "Worker 주소와 STRION 접근 코드를 저장한 뒤 연결을 확인해주세요.",
+  );
+  $("#garminSyncResults").innerHTML = "";
+  $("#garminSyncDialog").showModal();
+}
+
+function toggleGarminAccessCode(event) {
+  const input = $("#garminSyncForm").elements.accessCode;
+  input.type = input.type === "password" ? "text" : "password";
+  event.currentTarget.textContent = input.type === "password" ? "보기" : "숨기기";
+}
+
+function saveGarminSyncSettings(event) {
+  event.preventDefault();
+  const data = new FormData(event.currentTarget);
+  garminSettings = {
+    endpoint: normalizeWorkerEndpoint(data.get("endpoint")),
+    accessCode: String(data.get("accessCode") || "").trim(),
+  };
+  localStorage.setItem(GARMIN_SETTINGS_KEY, JSON.stringify(garminSettings));
+  event.currentTarget.elements.endpoint.value = garminSettings.endpoint;
+  updateGarminSyncState("ready", "설정을 저장했습니다", "연결 확인을 눌러 Garmin Personal API 상태를 확인해주세요.");
+}
+
+async function testGarminConnection() {
+  if (!readGarminSettingsFromForm()) return;
+  updateGarminSyncState("working", "연결 확인 중", "Garmin Personal API에 안전하게 접속하고 있습니다.");
+  try {
+    const response = await garminRequest("/api/health");
+    const result = await response.json();
+    updateGarminSyncState("connected", "Garmin 연결됨", result.message || "최근 러닝을 동기화할 준비가 되었습니다.");
+  } catch (error) {
+    updateGarminSyncState("error", "연결 실패", garminErrorMessage(error));
+  }
+}
+
+async function syncGarminActivities() {
+  if (!readGarminSettingsFromForm()) return;
+  const button = $("#syncGarminActivitiesButton");
+  button.disabled = true;
+  updateGarminSyncState("working", "최근 러닝 확인 중", "Garmin Connect의 최근 활동 목록을 불러오고 있습니다.");
+  $("#garminSyncResults").innerHTML = "";
+
+  try {
+    const end = toDateInputValue(new Date());
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - 90);
+    const response = await garminRequest(`/api/activities?start=0&limit=30&startDate=${toDateInputValue(startDate)}&endDate=${end}&activityType=running`);
+    const payload = await response.json();
+    const available = normalizeGarminActivities(payload);
+    const known = new Set(runnerProfile.garminActivityIds || []);
+    const pending = available.filter((item) => item.id && !known.has(item.id)).slice(0, 10);
+
+    if (!pending.length) {
+      updateGarminSyncState("connected", "최신 상태입니다", available.length ? "새로 가져올 러닝이 없습니다." : "최근 90일 동안 러닝 활동을 찾지 못했습니다.");
+      $("#garminSyncResults").innerHTML = '<p class="garmin-result-empty">이미 저장된 기록은 날짜 선택에서 다시 열 수 있습니다.</p>';
+      return;
+    }
+
+    const decodedActivities = [];
+    for (let index = 0; index < pending.length; index += 1) {
+      const remote = pending[index];
+      updateGarminSyncState("working", `${index + 1} / ${pending.length} 가져오는 중`, remote.name || `Garmin 활동 ${remote.id}`);
+      const fitFile = await downloadGarminFit(remote);
+      const decoded = await decodeFitFile(fitFile);
+      const localId = saveActivitySummary(decoded);
+      await storeActivityFile(localId, fitFile);
+      decodedActivities.push(decoded);
+      known.add(remote.id);
+      $("#garminSyncResults").insertAdjacentHTML("beforeend", `<div class="garmin-result-row"><span>완료</span><strong>${escapeHtml(remote.name || fitFile.name)}</strong></div>`);
+    }
+
+    runnerProfile.garminActivityIds = [...known].slice(-300);
+    persistRunnerProfile();
+    renderTrainingCenter();
+    activity = decodedActivities.at(-1);
+    renderDashboard(activity);
+    updateGarminSyncState("connected", `${decodedActivities.length}개 러닝 동기화 완료`, "가장 최근 기록의 분석 화면을 표시합니다.");
+    window.setTimeout(() => {
+      $("#garminSyncDialog").close();
+      setView(dashboardView);
+      dashboardView.scrollIntoView({ block: "start", behavior: "smooth" });
+    }, 650);
+  } catch (error) {
+    console.error(error);
+    updateGarminSyncState("error", "동기화 실패", garminErrorMessage(error));
+  } finally {
+    if (!$("#garminSyncStatus").textContent.includes("연결됨")) button.disabled = false;
+  }
+}
+
+function readGarminSettingsFromForm() {
+  const form = $("#garminSyncForm");
+  if (!form.reportValidity()) return false;
+  garminSettings = {
+    endpoint: normalizeWorkerEndpoint(form.elements.endpoint.value),
+    accessCode: form.elements.accessCode.value.trim(),
+  };
+  localStorage.setItem(GARMIN_SETTINGS_KEY, JSON.stringify(garminSettings));
+  return true;
+}
+
+function normalizeWorkerEndpoint(value) {
+  return String(value || "").trim().replace(/\/+$/, "");
+}
+
+async function garminRequest(path) {
+  const response = await fetch(`${garminSettings.endpoint}${path}`, {
+    headers: { Authorization: `Bearer ${garminSettings.accessCode}` },
+  });
+  if (!response.ok) {
+    let detail = "";
+    try { detail = (await response.json()).error || ""; } catch { detail = await response.text(); }
+    const error = new Error(detail || `서버 응답 오류 (${response.status})`);
+    error.status = response.status;
+    throw error;
+  }
+  return response;
+}
+
+function normalizeGarminActivities(payload) {
+  const list = Array.isArray(payload) ? payload : (payload?.activities || payload?.data || []);
+  return list.map((item) => ({
+    id: String(item.activityId || item.activityID || item.id || ""),
+    name: String(item.activityName || item.name || item.activityType?.typeKey || "Garmin 러닝"),
+  })).filter((item) => /^\d+$/.test(item.id));
+}
+
+async function downloadGarminFit(remote) {
+  const response = await garminRequest(`/api/activities/${encodeURIComponent(remote.id)}/fit`);
+  const bytes = new Uint8Array(await response.arrayBuffer());
+  let fitBytes = bytes;
+  let fitName = `${remote.id}.fit`;
+
+  if (bytes[0] === 0x50 && bytes[1] === 0x4b) {
+    const files = unzipSync(bytes);
+    const entry = Object.entries(files).find(([name]) => name.toLowerCase().endsWith(".fit"));
+    if (!entry) throw new Error("Garmin ZIP 안에서 FIT 원본을 찾지 못했습니다.");
+    [fitName, fitBytes] = entry;
+    fitName = fitName.split("/").at(-1);
+  }
+
+  return new File([fitBytes], fitName, { type: "application/octet-stream", lastModified: Date.now() });
+}
+
+function updateGarminSyncState(state, title, message) {
+  $("#garminSyncIndicator").className = state;
+  $("#garminSyncStatus").textContent = title;
+  $("#garminSyncMessage").textContent = message;
+  $("#syncGarminActivitiesButton").disabled = state !== "connected";
+}
+
+function garminErrorMessage(error) {
+  if (error?.status === 401) return "접근 코드가 일치하지 않거나 Garmin API 키가 만료되었습니다.";
+  if (error?.status === 403) return "이 STRION 주소는 Worker에서 허용되지 않았습니다.";
+  if (error?.status === 429) return "요청이 잠시 많습니다. 잠시 후 다시 시도해주세요.";
+  if (error instanceof TypeError) return "Worker 주소에 접속할 수 없습니다. 주소와 배포 상태를 확인해주세요.";
+  return error?.message || "연결 정보를 확인해주세요.";
 }
 
 function persistRunnerProfile() {

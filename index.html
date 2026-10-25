@@ -8,12 +8,12 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <title>STRION</title>
-    <link rel="manifest" href="manifest.webmanifest?v=20261024-12" />
+    <link rel="manifest" href="manifest.webmanifest?v=20261024-13" />
     <link rel="icon" href="strion-icon.svg" type="image/svg+xml" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Gowun+Dodum&family=Orbitron:wght@500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="styles.css?v=20261024-12" />
+    <link rel="stylesheet" href="styles.css?v=20261024-13" />
   </head>
   <body>
     <div class="noise" aria-hidden="true"></div>
@@ -217,6 +217,7 @@
               <div class="card-heading">
                 <div><span class="card-kicker">LOAD</span><h3>최근 8주 러닝</h3></div>
                 <div class="data-actions">
+                  <button id="openGarminSyncButton" class="mini-button garmin-sync-trigger" type="button"><i></i>Garmin 동기화</button>
                   <button id="exportDataButton" class="mini-button" type="button">백업</button>
                   <button id="importDataButton" class="mini-button" type="button">복원</button>
                   <input id="importDataInput" type="file" accept="application/json,.json" hidden />
@@ -286,6 +287,7 @@
           <h2>FIT 파일을 여기에 놓으세요</h2>
           <p>또는 클릭해서 Garmin 활동 파일을 하나 이상 선택</p>
           <button id="chooseFileButton" class="primary-button" type="button">FIT 파일 선택</button>
+          <button id="openGarminSyncFromUploadButton" class="garmin-secondary-button" type="button"><i></i>Garmin Connect에서 가져오기</button>
           <small>지원 형식: .fit · 여러 파일을 한 번에 올리면 캘린더와 주간 기록에 함께 저장됩니다</small>
         </div>
 
@@ -504,6 +506,56 @@
       </div>
     </dialog>
 
+    <dialog id="garminSyncDialog" class="profile-dialog garmin-sync-dialog">
+      <div class="dialog-heading">
+        <div>
+          <p class="section-label">GARMIN PERSONAL SYNC</p>
+          <h2>Garmin 기록 가져오기</h2>
+        </div>
+        <button id="closeGarminSyncButton" class="icon-button" type="button" aria-label="닫기">×</button>
+      </div>
+
+      <div class="garmin-sync-body">
+        <section class="garmin-sync-intro">
+          <span class="garmin-pulse" aria-hidden="true"><i></i></span>
+          <div>
+            <strong>내 Garmin 활동을 STRION으로 안전하게 가져옵니다.</strong>
+            <p>API 키는 이 페이지나 GitHub에 저장하지 않습니다. Cloudflare Worker가 키를 보호하고 STRION에는 전용 접근 코드만 저장됩니다.</p>
+          </div>
+        </section>
+
+        <form id="garminSyncForm" class="garmin-sync-form">
+          <label>Worker 주소
+            <input name="endpoint" type="url" inputmode="url" autocomplete="url" placeholder="https://strion-garmin-sync.계정.workers.dev" required />
+            <small>Cloudflare에서 배포한 STRION 전용 주소</small>
+          </label>
+          <label>STRION 접근 코드
+            <div class="secret-field">
+              <input name="accessCode" type="password" autocomplete="off" placeholder="직접 만든 긴 비밀 코드" required />
+              <button id="toggleGarminAccessCode" type="button">보기</button>
+            </div>
+            <small>Garmin 비밀번호가 아니라 Worker에 설정한 별도 코드입니다.</small>
+          </label>
+          <div class="garmin-sync-actions">
+            <button id="testGarminSyncButton" class="outline-button" type="button">연결 확인</button>
+            <button class="primary-button" type="submit">설정 저장</button>
+          </div>
+        </form>
+
+        <section class="garmin-sync-console" aria-live="polite">
+          <div class="garmin-sync-status">
+            <span id="garminSyncIndicator"></span>
+            <div><small>SYNC STATUS</small><strong id="garminSyncStatus">설정이 필요합니다</strong></div>
+          </div>
+          <p id="garminSyncMessage">Worker를 한 번 설정하면 이후에는 버튼 하나로 최근 러닝을 가져올 수 있습니다.</p>
+          <button id="syncGarminActivitiesButton" class="primary-button" type="button" disabled>최근 러닝 동기화</button>
+          <div id="garminSyncResults" class="garmin-sync-results"></div>
+        </section>
+
+        <p class="settings-note">개인 Garmin 계정 전용 기능입니다. 동기화된 FIT 원본은 기존 수동 업로드와 동일하게 현재 브라우저의 저장 공간에 보관됩니다.</p>
+      </div>
+    </dialog>
+
     <footer>
       <span class="footer-signature">
         <span><b>STRION</b> · STRIDE ON</span>
@@ -513,6 +565,6 @@
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-    <script type="module" src="app.js?v=20261024-12"></script>
+    <script type="module" src="app.js?v=20261024-13"></script>
   </body>
 </html>
