@@ -1693,31 +1693,32 @@ function renderHeartPaceAnalysis(data) {
 }
 
 function renderHeartRateZones(data) {
-  const customMaxHr = Number($("#maxHeartRateInput").value);
   const heartRatePoints = data.points.filter((point) => point.heartRate && point.elapsed >= 0);
-  if (customMaxHr >= 100 && customMaxHr <= 240 && heartRatePoints.length) {
-    renderCalculatedHeartRateZones(heartRatePoints, customMaxHr, "입력한 최대 심박 기준 · Z1 50%부터 Z5 100%까지");
-    return;
-  }
-
-  if (Array.isArray(data.sessionZones?.timeInHrZone)) {
-    const zoneSeconds = data.sessionZones.timeInHrZone.slice(1, 6);
-    const boundaries = data.sessionZones.hrZoneHighBoundary || [];
+  const garminZones = getGarminHeartRateZones(data.sessionZones);
+  if (garminZones) {
     const colors = ["#9eb7ae", "#55a884", "#d7c62e", "#ff842f", "#d93624"];
-    const total = zoneSeconds.reduce((sum, value) => sum + (Number(value) || 0), 0) || 1;
-    $("#heartRateZones").innerHTML = zoneSeconds.map((value, index) => {
-      const lower = boundaries[index] ?? "?";
-      const upper = boundaries[index + 1] ?? "+";
+    const total = garminZones.times.reduce((sum, value) => sum + value, 0) || 1;
+    $("#heartRateZones").innerHTML = garminZones.times.map((value, index) => {
+      const range = garminZones.ranges[index];
+      const rangeText = Number.isFinite(range.upper)
+        ? `${range.lower}–${range.upper} bpm`
+        : `${range.lower} bpm 이상`;
       return `
-        <div class="zone-row" title="${lower}–${upper} bpm">
+        <div class="zone-row" title="${rangeText}">
           <span class="zone-name">Z${index + 1}</span>
-          <span class="zone-range">${lower}–${upper} bpm</span>
-          <div class="zone-track"><div class="zone-fill" style="width:${((Number(value) || 0) / total) * 100}%;background:${colors[index]}"></div></div>
-          <span class="zone-time">${formatShortDuration(Number(value) || 0)}</span>
+          <span class="zone-range">${rangeText}</span>
+          <div class="zone-track"><div class="zone-fill" style="width:${(value / total) * 100}%;background:${colors[index]}"></div></div>
+          <span class="zone-time">${formatShortDuration(value)}</span>
         </div>
       `;
     }).join("");
-    $("#zoneBasis").textContent = "FIT 파일에 저장된 Garmin 심박 존 기준입니다. 최대 심박을 입력하면 다시 계산합니다.";
+    $("#zoneBasis").textContent = "Garmin FIT에 저장된 개인 심박 존을 우선 적용했습니다. 아래 최대 심박 값은 Garmin 존이 없는 파일에서만 사용됩니다.";
+    return;
+  }
+
+  const customMaxHr = Number($("#maxHeartRateInput").value);
+  if (customMaxHr >= 100 && customMaxHr <= 240 && heartRatePoints.length) {
+    renderCalculatedHeartRateZones(heartRatePoints, customMaxHr, "Garmin 존 정보가 없어 입력한 최대 심박 기준으로 계산했습니다 · Z1 50%부터 Z5 100%까지");
     return;
   }
 
@@ -1729,6 +1730,26 @@ function renderHeartRateZones(data) {
 
   const maxHr = Math.max(data.maxHeartRate || 0, ...heartRatePoints.map((point) => point.heartRate));
   renderCalculatedHeartRateZones(heartRatePoints, maxHr, `이 활동에서 관측된 최고 심박 ${Math.round(maxHr)} bpm을 임시 기준으로 계산했습니다.`);
+}
+
+function getGarminHeartRateZones(sessionZones) {
+  if (!Array.isArray(sessionZones?.timeInHrZone)) return null;
+
+  const rawTimes = sessionZones.timeInHrZone.map((value) => Number(value) || 0);
+  const times = (rawTimes.length >= 6 ? rawTimes.slice(1, 6) : rawTimes.slice(0, 5));
+  const boundaries = (sessionZones.hrZoneHighBoundary || []).map(Number);
+  if (times.length !== 5 || boundaries.length < 6 || boundaries.slice(0, 5).some((value) => !Number.isFinite(value))) return null;
+
+  // Garmin stores the minimum of Z1 followed by the upper boundary of Z1-Z5.
+  const ranges = times.map((_, index) => {
+    const lower = index === 0 ? boundaries[0] : boundaries[index] + 1;
+    const recordedUpper = boundaries[index + 1];
+    const upper = Number.isFinite(recordedUpper) && recordedUpper <= 240 ? recordedUpper : null;
+    return { lower: Math.round(lower), upper: upper === null ? null : Math.round(upper) };
+  });
+
+  if (ranges.some((range, index) => !Number.isFinite(range.lower) || (index < 4 && (!Number.isFinite(range.upper) || range.upper < range.lower)))) return null;
+  return { times, ranges };
 }
 
 function renderCalculatedHeartRateZones(heartRatePoints, maxHr, basisText) {
