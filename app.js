@@ -1740,11 +1740,11 @@ function getGarminHeartRateZones(sessionZones) {
   const boundaries = (sessionZones.hrZoneHighBoundary || []).map(Number);
   if (times.length !== 5 || boundaries.length < 6 || boundaries.slice(0, 5).some((value) => !Number.isFinite(value))) return null;
 
-  // Garmin stores the minimum of Z1 followed by the upper boundary of Z1-Z5.
+  // FIT session boundaries are the starting bpm for each Garmin zone.
   const ranges = times.map((_, index) => {
-    const lower = index === 0 ? boundaries[0] : boundaries[index] + 1;
-    const recordedUpper = boundaries[index + 1];
-    const upper = Number.isFinite(recordedUpper) && recordedUpper <= 240 ? recordedUpper : null;
+    const lower = boundaries[index];
+    const nextZoneStart = boundaries[index + 1];
+    const upper = index < 4 && Number.isFinite(nextZoneStart) ? nextZoneStart - 1 : null;
     return { lower: Math.round(lower), upper: upper === null ? null : Math.round(upper) };
   });
 
