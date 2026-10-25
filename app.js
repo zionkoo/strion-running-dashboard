@@ -149,10 +149,16 @@ $("#garminSyncForm").addEventListener("submit", saveGarminSyncSettings);
 $("#testGarminSyncButton").addEventListener("click", testGarminConnection);
 $("#syncGarminActivitiesButton").addEventListener("click", syncGarminActivities);
 $("#toggleGarminAccessCode").addEventListener("click", toggleGarminAccessCode);
+$("#dashboardModeButton").addEventListener("click", toggleDashboardMode);
+$("#postRunForm").addEventListener("submit", savePostRunCheckIn);
+$("#postRunForm").elements.rpe.addEventListener("input", (event) => {
+  $("#rpeValue").textContent = event.currentTarget.value;
+});
 
 renderPersonalHub();
 updateGoalPaceAnalyzer();
 renderTrainingCenter();
+applyDashboardMode();
 initializeCollapsibles();
 startLiveClock();
 loadWeather(37.5665, 126.9780, "서울");
@@ -302,9 +308,12 @@ function loadRunnerProfile() {
         distance: Number(saved?.weeklyGoals?.distance) || 30,
         runs: Number(saved?.weeklyGoals?.runs) || 3,
       },
+      preferences: {
+        easyMode: saved?.preferences?.easyMode !== false,
+      },
     };
   } catch {
-    return { races: [], pbs: {}, workouts: [], activities: [], garminActivityIds: [], maxHeartRate: null, weeklyGoals: { distance: 30, runs: 3 } };
+    return { races: [], pbs: {}, workouts: [], activities: [], garminActivityIds: [], maxHeartRate: null, weeklyGoals: { distance: 30, runs: 3 }, preferences: { easyMode: true } };
   }
 }
 
@@ -897,6 +906,64 @@ function renderTrainingCenter() {
   renderHistoryChart(activities);
   renderWeeklyReport(activities);
   populateRunComparison(activities);
+  renderRunnerCommandCenter(activities, workouts);
+}
+
+function renderRunnerCommandCenter(activities, workouts) {
+  const today = toDateInputValue(new Date());
+  const todayPlan = workouts.find((item) => item.date === today && !item.completed);
+  const latest = activities[0] || null;
+  const daysSinceRun = latest ? Math.max(0, Math.round((startOfLocalDay(new Date()) - dateFromInput(latest.date)) / 86400000)) : null;
+  const thisStart = startOfWeek(new Date());
+  const previousStart = new Date(thisStart);
+  previousStart.setDate(previousStart.getDate() - 7);
+  const current = activities.filter((item) => dateFromInput(item.date) >= thisStart);
+  const previous = activities.filter((item) => dateFromInput(item.date) >= previousStart && dateFromInput(item.date) < thisStart);
+  const currentDistance = current.reduce((sum, item) => sum + item.distanceKm, 0);
+  const previousDistance = previous.reduce((sum, item) => sum + item.distanceKm, 0);
+  const increase = previousDistance ? (currentDistance - previousDistance) / previousDistance * 100 : null;
+  const recentCheckIn = latest?.checkIn || null;
+  const maxHeartRate = runnerProfile.maxHeartRate;
+  const hardRuns = maxHeartRate ? current.filter((item) => item.heartRate && item.heartRate / maxHeartRate >= .8).length : 0;
+
+  let badge = "EASY READY";
+  let title = "편안한 이지런으로 리듬을 이어가세요.";
+  let text = "30–45분 동안 대화 가능한 강도로 달리고 몸의 반응을 확인해보세요.";
+  if (!activities.length) {
+    badge = "FIRST STRIDE";
+    title = "첫 FIT 기록을 불러와 기준점을 만드세요.";
+    text = "첫 기록부터 거리, 페이스, 심박과 러닝 다이내믹스를 한 화면에서 정리합니다.";
+  } else if (recentCheckIn?.pain || recentCheckIn?.condition === "poor" || recentCheckIn?.rpe >= 9) {
+    badge = "RECOVER";
+    title = "오늘은 회복을 우선하세요.";
+    text = "최근 기록에 높은 피로 또는 불편감이 남아 있습니다. 휴식이나 가벼운 걷기로 상태를 확인하세요.";
+  } else if ((Number.isFinite(increase) && increase > 25) || hardRuns >= 2) {
+    badge = "LOAD ALERT";
+    title = "훈련 부하가 빠르게 올라갔습니다.";
+    text = "다음 러닝은 짧은 회복주로 두고 수면과 근육 피로를 먼저 확인하세요.";
+  } else if (todayPlan) {
+    badge = `${todayPlan.type} SESSION`;
+    title = todayPlan.title;
+    text = `${todayPlan.distance ? `${todayPlan.distance}km` : "계획 거리"}${todayPlan.targetPace ? ` · ${todayPlan.targetPace}/km` : ""}로 등록된 오늘의 훈련입니다.`;
+  } else if (daysSinceRun === 0) {
+    badge = "RECOVERY";
+    title = "오늘 러닝을 완료했습니다.";
+    text = "수분과 영양을 보충하고 아래 분석 화면에서 체감 강도와 컨디션을 기록해두세요.";
+  } else if (daysSinceRun >= 3) {
+    badge = "RESTART";
+    title = "짧고 편안하게 다시 시작하세요.";
+    text = `${daysSinceRun}일 만의 러닝이라면 25–35분 이지런으로 몸을 깨우는 편이 좋습니다.`;
+  }
+
+  $("#todayActionBadge").textContent = badge;
+  $("#todayActionTitle").textContent = title;
+  $("#todayActionText").textContent = text;
+  $("#loadSignalGrid").innerHTML = [
+    ["이번 주", `${currentDistance.toFixed(1)}km`],
+    ["지난주 대비", Number.isFinite(increase) ? `${increase >= 0 ? "+" : ""}${Math.round(increase)}%` : "기준 수집"],
+    ["고강도", `${hardRuns}회`],
+    ["최근 러닝", daysSinceRun === null ? "없음" : daysSinceRun === 0 ? "오늘" : `${daysSinceRun}일 전`],
+  ].map(([label, value]) => `<span><small>${label}</small><b>${value}</b></span>`).join("");
 }
 
 function saveWeeklyGoals(event) {
@@ -956,6 +1023,7 @@ function renderRunningCalendar() {
 
 function saveActivitySummary(data) {
   const id = `${data.startTime.toISOString()}-${Math.round(data.totalDistance)}`;
+  const previous = runnerProfile.activities.find((item) => item.id === id);
   const score = calculateRunScore(data);
   const summary = {
     id,
@@ -975,6 +1043,7 @@ function saveActivitySummary(data) {
     finishScore: score.finish,
     heartScore: score.heart,
     cadenceScore: score.cadence,
+    checkIn: previous?.checkIn || null,
   };
   const index = runnerProfile.activities.findIndex((item) => item.id === id);
   if (index >= 0) runnerProfile.activities[index] = summary;
@@ -1420,6 +1489,8 @@ function renderDashboard(data) {
     <article class="summary-card"><span>${label}</span><strong>${value}</strong><small>${unit}</small></article>
   `).join("");
 
+  renderQuickReview(data);
+  renderPostRunCheckIn(data);
   renderInsight(data);
   renderRunScore(data);
   renderVdotCoach(data);
@@ -1429,6 +1500,101 @@ function renderDashboard(data) {
   renderHeartRateZones(data);
   renderRoute(data);
   renderDynamics(data);
+}
+
+function activitySummaryId(data) {
+  return `${data.startTime.toISOString()}-${Math.round(data.totalDistance)}`;
+}
+
+function renderQuickReview(data) {
+  const pace = speedToPace(data.averageSpeed);
+  const dynamics = [
+    ["수직 진폭", divideOrNull(average(data.points.map((point) => point.verticalOscillation)), 10), "cm", 1],
+    ["수직 비율", average(data.points.map((point) => point.verticalRatio)), "%", 1],
+    ["보폭", divideOrNull(average(data.points.map((point) => point.stepLength)), 1000), "m", 2],
+    ["지면 접촉", average(data.points.map((point) => point.stanceTime)), "ms", 0],
+    ["케이던스", data.averageCadence, "spm", 0],
+    ["러닝 파워", average(data.points.map((point) => point.power)), "W", 0],
+  ].filter(([, value]) => Number.isFinite(value));
+  const core = [
+    ["거리", (data.totalDistance / 1000).toFixed(2), "km"],
+    ["시간", formatDuration(data.totalTime), ""],
+    ["페이스", formatPace(pace), "/km"],
+    ["평균 심박", roundOrDash(data.averageHeartRate), "bpm"],
+    ["최대 심박", roundOrDash(data.maxHeartRate), "bpm"],
+    ["칼로리", data.calories > 0 ? Math.round(data.calories) : "--", "kcal"],
+  ];
+  $("#quickCoreMetrics").innerHTML = core.map(([label, value, unit]) => `<article><span>${label}</span><strong>${value}<small>${unit}</small></strong></article>`).join("");
+  $("#quickDynamicsMetrics").innerHTML = dynamics.length
+    ? dynamics.map(([label, value, unit, decimals]) => `<article><span>${label}</span><strong>${Number(value).toFixed(decimals)}<small>${unit}</small></strong></article>`).join("")
+    : '<p class="quick-empty">이 FIT 파일에는 러닝 다이내믹스 센서 데이터가 없습니다.</p>';
+  const score = calculateRunScore(data);
+  $("#quickReviewVerdict").textContent = `평균 ${formatPace(pace)}/km · 심박 ${roundOrDash(data.averageHeartRate)}bpm · RUN SCORE ${score.total}점으로 기록되었습니다.`;
+  renderSimilarRunSummary(data);
+}
+
+function renderSimilarRunSummary(data) {
+  const currentId = activitySummaryId(data);
+  const currentDistance = data.totalDistance / 1000;
+  const candidates = runnerProfile.activities.filter((item) => item.id !== currentId && item.distanceKm > 0);
+  const similar = candidates.sort((a, b) => Math.abs(a.distanceKm - currentDistance) - Math.abs(b.distanceKm - currentDistance))[0];
+  if (!similar || Math.abs(similar.distanceKm - currentDistance) / currentDistance > .3) {
+    $("#similarRunSummary").innerHTML = '<span>SIMILAR RUN</span><p>비슷한 거리의 기록이 쌓이면 페이스·심박·점수 변화를 자동 비교합니다.</p>';
+    return;
+  }
+  const pace = speedToPace(data.averageSpeed);
+  const paceDelta = Number.isFinite(pace) && Number.isFinite(similar.pace) ? Math.round(pace - similar.pace) : null;
+  const heartDelta = Number.isFinite(data.averageHeartRate) && Number.isFinite(similar.heartRate) ? Math.round(data.averageHeartRate - similar.heartRate) : null;
+  const scoreDelta = calculateRunScore(data).total - (similar.score || 0);
+  const paceCopy = paceDelta === null ? "페이스 비교 대기" : paceDelta === 0 ? "같은 페이스" : `${Math.abs(paceDelta)}초/km ${paceDelta < 0 ? "빠름" : "느림"}`;
+  const heartCopy = heartDelta === null ? "심박 비교 대기" : `${Math.abs(heartDelta)}bpm ${heartDelta <= 0 ? "낮음" : "높음"}`;
+  $("#similarRunSummary").innerHTML = `<span>SIMILAR RUN · ${formatCompactDate(similar.date)} ${similar.distanceKm.toFixed(1)}km 대비</span><div><b>${paceCopy}</b><b>${heartCopy}</b><b>점수 ${scoreDelta >= 0 ? "+" : ""}${scoreDelta}</b></div>`;
+}
+
+function renderPostRunCheckIn(data) {
+  const summary = runnerProfile.activities.find((item) => item.id === activitySummaryId(data));
+  const checkIn = summary?.checkIn;
+  const form = $("#postRunForm");
+  form.elements.rpe.value = checkIn?.rpe || 5;
+  form.elements.condition.value = checkIn?.condition || "good";
+  form.elements.sleep.value = checkIn?.sleep ?? "";
+  form.elements.pain.checked = Boolean(checkIn?.pain);
+  form.elements.note.value = checkIn?.note || "";
+  $("#rpeValue").textContent = form.elements.rpe.value;
+  $("#postRunSavedState").textContent = checkIn ? `저장됨 · RPE ${checkIn.rpe}` : "미기록";
+}
+
+function savePostRunCheckIn(event) {
+  event.preventDefault();
+  if (!activity) return;
+  const summary = runnerProfile.activities.find((item) => item.id === activitySummaryId(activity));
+  if (!summary) return;
+  const data = new FormData(event.currentTarget);
+  summary.checkIn = {
+    rpe: Number(data.get("rpe")),
+    condition: String(data.get("condition")),
+    sleep: data.get("sleep") === "" ? null : Number(data.get("sleep")),
+    pain: data.get("pain") === "on",
+    note: String(data.get("note") || "").trim(),
+    savedAt: new Date().toISOString(),
+  };
+  persistRunnerProfile();
+  renderPostRunCheckIn(activity);
+  renderTrainingCenter();
+}
+
+function toggleDashboardMode() {
+  runnerProfile.preferences = runnerProfile.preferences || {};
+  runnerProfile.preferences.easyMode = !runnerProfile.preferences.easyMode;
+  persistRunnerProfile();
+  applyDashboardMode();
+}
+
+function applyDashboardMode() {
+  const easyMode = runnerProfile.preferences?.easyMode !== false;
+  document.body.classList.toggle("easy-mode", easyMode);
+  const button = $("#dashboardModeButton");
+  if (button) button.textContent = easyMode ? "상세 분석 보기" : "한눈에 보기";
 }
 
 function renderInsight(data) {

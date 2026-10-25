@@ -13,7 +13,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Gowun+Dodum&family=Orbitron:wght@500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="styles.css?v=20261024-13" />
+    <link rel="stylesheet" href="styles.css?v=20261025-15" />
   </head>
   <body>
     <div class="noise" aria-hidden="true"></div>
@@ -84,6 +84,16 @@
               <div id="upcomingRaceList" class="upcoming-race-list"></div>
             </article>
           </div>
+        </section>
+
+        <section class="today-action-card" aria-labelledby="todayActionTitle">
+          <div class="today-action-copy">
+            <p class="section-label">TODAY'S ACTION</p>
+            <h2 id="todayActionTitle">오늘의 러닝을 준비합니다.</h2>
+            <p id="todayActionText">최근 기록과 이번 주 계획을 확인해 다음 한 걸음을 제안합니다.</p>
+          </div>
+          <strong id="todayActionBadge" class="today-action-badge">READY</strong>
+          <div id="loadSignalGrid" class="load-signal-grid" aria-label="현재 훈련 신호"></div>
         </section>
 
         <section class="goal-pace-lab" aria-labelledby="goalPaceTitle">
@@ -314,6 +324,28 @@
           </div>
         </div>
 
+        <section id="quickReviewPanel" class="quick-review-panel" aria-labelledby="quickReviewTitle">
+          <div class="quick-review-heading">
+            <div>
+              <p class="section-label">ONE SCREEN REVIEW</p>
+              <h2 id="quickReviewTitle">오늘의 러닝 한눈에 보기</h2>
+              <p id="quickReviewVerdict">핵심 기록과 러닝 다이내믹스를 정리합니다.</p>
+            </div>
+            <button id="dashboardModeButton" class="outline-button dashboard-mode-button" type="button">상세 분석 보기</button>
+          </div>
+          <div class="quick-review-columns">
+            <div>
+              <h3>러닝 기록</h3>
+              <div id="quickCoreMetrics" class="quick-metric-grid"></div>
+            </div>
+            <div>
+              <h3>러닝 다이내믹스</h3>
+              <div id="quickDynamicsMetrics" class="quick-metric-grid"></div>
+            </div>
+          </div>
+          <div id="similarRunSummary" class="similar-run-summary"></div>
+        </section>
+
         <section id="summaryGrid" class="summary-grid" aria-label="활동 요약"></section>
 
         <section class="insight-panel">
@@ -335,6 +367,27 @@
             <p id="runScoreDescription">페이스·후반 유지력·심박·케이던스 데이터를 종합한 참고 점수입니다.</p>
           </div>
           <div id="runScoreMetrics" class="run-score-metrics"></div>
+        </section>
+
+        <section id="postRunPanel" class="panel post-run-panel">
+          <div class="panel-heading">
+            <div><p class="section-label">POST RUN CHECK-IN</p><h2>오늘 몸의 반응도 기록하기</h2></div>
+            <strong id="postRunSavedState">미기록</strong>
+          </div>
+          <form id="postRunForm" class="post-run-form">
+            <label class="rpe-control">체감 강도 RPE <output id="rpeValue">5</output>
+              <input name="rpe" type="range" min="1" max="10" value="5" />
+              <small>1 아주 편함 · 10 최대 노력</small>
+            </label>
+            <label>오늘 컨디션
+              <select name="condition"><option value="great">매우 좋음</option><option value="good" selected>좋음</option><option value="tired">피곤함</option><option value="poor">좋지 않음</option></select>
+            </label>
+            <label>지난밤 수면<input name="sleep" type="number" inputmode="decimal" min="0" max="14" step="0.5" placeholder="7.0" /><small>시간</small></label>
+            <label class="pain-check"><input name="pain" type="checkbox" /><span>통증 또는 불편감 있음</span></label>
+            <label class="post-run-note">메모<input name="note" maxlength="120" placeholder="예: 오른쪽 종아리가 조금 뻐근함" /></label>
+            <button class="primary-button" type="submit">컨디션 저장</button>
+          </form>
+          <p class="post-run-disclaimer">훈련 참고용 기록이며 통증이 지속되면 운동을 중단하고 전문가와 상담하세요.</p>
         </section>
 
         <section id="vdotCoachPanel" class="panel vdot-coach-panel">
@@ -565,6 +618,6 @@
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-    <script type="module" src="app.js?v=20261025-14"></script>
+    <script type="module" src="app.js?v=20261025-15"></script>
   </body>
 </html>

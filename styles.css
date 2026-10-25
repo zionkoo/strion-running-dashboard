@@ -1231,10 +1231,85 @@ footer { border-color: var(--line); }
 .comparison-row b.better { color: var(--cyan); text-shadow: 0 0 8px rgba(80,236,255,.35); }
 .comparison-empty { color: var(--muted); line-height: 1.6; }
 
+/* Runner-first command and one-screen activity review. */
+.today-action-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 20px 28px;
+  margin: 22px 0 0;
+  padding: 24px 27px;
+  overflow: hidden;
+  border: 1px solid rgba(80,236,255,.34);
+  background: linear-gradient(120deg, rgba(6,18,29,.98), rgba(10,30,42,.9));
+  box-shadow: 0 0 34px rgba(80,236,255,.08);
+}
+.today-action-card::before, .quick-review-panel::before { content: ""; position: absolute; inset: 0 auto auto 0; width: 120px; height: 2px; background: var(--cyan); box-shadow: 0 0 16px var(--cyan); }
+.today-action-copy h2 { margin: 3px 0 7px; color: var(--ink); font-size: clamp(1.35rem, 2.4vw, 2rem); }
+.today-action-copy > p:last-child { margin: 0; color: var(--muted); line-height: 1.65; }
+.today-action-badge { align-self: start; padding: 9px 13px; color: var(--cyan); border: 1px solid rgba(80,236,255,.34); font: 600 .68rem "Orbitron", sans-serif; letter-spacing: .08em; }
+.load-signal-grid { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.load-signal-grid span { padding: 11px 13px; border: 1px solid rgba(80,236,255,.14); background: rgba(2,8,13,.48); }
+.load-signal-grid small { display: block; color: var(--muted); font-size: .6rem; }
+.load-signal-grid b { display: block; margin-top: 4px; color: var(--ink); font: 600 .82rem "Orbitron", sans-serif; }
+
+.quick-review-panel {
+  position: relative;
+  margin-bottom: 24px;
+  padding: 25px;
+  border: 1px solid rgba(80,236,255,.4);
+  background: linear-gradient(135deg, rgba(5,15,24,.97), rgba(7,28,38,.94));
+  box-shadow: 0 0 38px rgba(80,236,255,.1), inset 0 0 35px rgba(89,120,255,.035);
+}
+.quick-review-heading { display: flex; justify-content: space-between; align-items: end; gap: 20px; }
+.quick-review-heading h2 { margin: 3px 0 5px; font-size: clamp(1.55rem, 3vw, 2.4rem); }
+.quick-review-heading p:last-child { margin: 0; color: var(--muted); }
+.dashboard-mode-button { flex: 0 0 auto; min-height: 44px; padding: 9px 13px; }
+.quick-review-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 21px; }
+.quick-review-columns h3 { margin: 0 0 9px; color: var(--muted); font: 500 .62rem "Orbitron", sans-serif; letter-spacing: .12em; }
+.quick-metric-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; }
+.quick-metric-grid article { min-width: 0; padding: 13px 12px; border: 1px solid rgba(80,236,255,.18); background: rgba(2,8,13,.52); }
+.quick-metric-grid span { display: block; color: var(--muted); font-size: .62rem; }
+.quick-metric-grid strong { display: block; margin-top: 5px; overflow: hidden; color: var(--ink); font: 600 clamp(.88rem, 1.7vw, 1.14rem) "Orbitron", sans-serif; text-overflow: ellipsis; white-space: nowrap; }
+.quick-metric-grid small { margin-left: 4px; color: var(--muted); font-size: .52rem; }
+.quick-empty { grid-column: 1 / -1; margin: 0; padding: 25px 14px; color: var(--muted); border: 1px dashed rgba(80,236,255,.18); font-size: .72rem; }
+.similar-run-summary { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-top: 12px; padding: 12px 14px; border-left: 2px solid var(--green); background: rgba(89,120,255,.07); }
+.similar-run-summary > span { color: var(--cyan); font: 500 .55rem "Orbitron", sans-serif; letter-spacing: .08em; }
+.similar-run-summary p { margin: 0; color: var(--muted); font-size: .68rem; }
+.similar-run-summary div { display: flex; gap: 18px; color: var(--ink); font-size: .68rem; }
+
+.post-run-panel { margin-bottom: 24px; }
+#postRunSavedState { color: var(--cyan); font: 500 .62rem "Orbitron", sans-serif; }
+.post-run-form { display: grid; grid-template-columns: 1.35fr .8fr .65fr auto; align-items: end; gap: 12px; }
+.post-run-form label { color: var(--muted); font-size: .68rem; }
+.post-run-form select, .post-run-form input[type="number"], .post-run-form input[type="text"], .post-run-form .post-run-note input { width: 100%; height: 43px; margin-top: 6px; padding: 0 10px; color: var(--ink); border: 1px solid rgba(80,236,255,.22); background: rgba(2,8,13,.8); }
+.rpe-control output { float: right; color: var(--cyan); font: 600 .9rem "Orbitron", sans-serif; }
+.rpe-control input { display: block; width: 100%; margin: 12px 0 6px; accent-color: var(--cyan); }
+.rpe-control small, .post-run-form label > small { display: block; color: var(--muted); font-size: .56rem; }
+.pain-check { display: flex; align-items: center; min-height: 43px; padding: 0 10px; border: 1px solid rgba(80,236,255,.18); }
+.pain-check input { width: 17px; height: 17px; margin-right: 8px; accent-color: #ff5263; }
+.post-run-note { grid-column: 1 / -2; }
+.post-run-disclaimer { margin: 12px 0 0; color: var(--muted); font-size: .61rem; }
+
+body.easy-mode #summaryGrid,
+body.easy-mode .insight-panel,
+body.easy-mode #runScorePanel,
+body.easy-mode #vdotCoachPanel,
+body.easy-mode .chart-panel,
+body.easy-mode #heartPacePanel,
+body.easy-mode .two-column,
+body.easy-mode #routePanel,
+body.easy-mode #dynamicsPanel { display: none !important; }
+body.easy-mode .dashboard-heading { margin-bottom: 20px; }
+body.easy-mode .dashboard-heading h1 { font-size: clamp(2.6rem, 5vw, 4.5rem); }
+
 @media (max-width: 980px) {
   .run-score-panel { grid-template-columns: 130px 1fr; }
   .run-score-metrics { grid-column: 1 / -1; }
   .training-insights-grid { grid-template-columns: 1fr; }
+  .quick-review-columns { grid-template-columns: 1fr; }
+  .post-run-form { grid-template-columns: 1fr 1fr; }
+  .post-run-note { grid-column: 1 / 2; }
 }
 
 @media (max-width: 620px) {
@@ -1245,6 +1320,18 @@ footer { border-color: var(--line); }
   .weekly-report-metrics { grid-template-columns: 1fr; }
   .compare-selectors { grid-template-columns: 1fr; }
   .comparison-row { grid-template-columns: 1fr 82px 82px; }
+  .today-action-card { grid-template-columns: 1fr; padding: 20px 17px; }
+  .today-action-badge { justify-self: start; }
+  .load-signal-grid { grid-template-columns: 1fr 1fr; }
+  .quick-review-panel { padding: 20px 15px; }
+  .quick-review-heading { align-items: flex-start; flex-direction: column; }
+  .dashboard-mode-button { width: 100%; }
+  .quick-metric-grid { grid-template-columns: repeat(2, 1fr); }
+  .similar-run-summary { align-items: flex-start; flex-direction: column; }
+  .similar-run-summary div { width: 100%; justify-content: space-between; gap: 8px; }
+  .post-run-form { grid-template-columns: 1fr; }
+  .post-run-note { grid-column: auto; }
+  .post-run-form .primary-button { min-height: 48px; }
   .data-actions { width: 100%; }
   .data-actions .mini-button { flex: 1; }
   .garmin-sync-form { grid-template-columns: 1fr; }
