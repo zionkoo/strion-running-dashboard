@@ -1261,7 +1261,7 @@ async function importRunnerData(event) {
 
 function initializePwa() {
   if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("./sw.js?v=20261026-17").catch(() => {});
+    navigator.serviceWorker.register("./sw.js?v=20261026-18").catch(() => {});
   }
   const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
   const isAndroid = /android/i.test(navigator.userAgent);
@@ -1580,9 +1580,9 @@ function renderShareCard() {
   if (sharePhoto) {
     drawCoverImage(context, sharePhoto, 0, 0, width, height);
     const overlay = context.createLinearGradient(0, 0, 0, height);
-    overlay.addColorStop(0, "rgba(1, 8, 15, .16)");
-    overlay.addColorStop(0.45, "rgba(1, 8, 15, .38)");
-    overlay.addColorStop(1, "rgba(1, 8, 15, .94)");
+    overlay.addColorStop(0, "rgba(1, 8, 15, .03)");
+    overlay.addColorStop(0.48, "rgba(1, 8, 15, .10)");
+    overlay.addColorStop(1, "rgba(1, 8, 15, .56)");
     context.fillStyle = overlay;
     context.fillRect(0, 0, width, height);
   } else {
@@ -1600,6 +1600,9 @@ function renderShareCard() {
   context.shadowBlur = 0;
 
   context.fillStyle = "#f2fbff";
+  context.shadowColor = "rgba(0, 0, 0, .92)";
+  context.shadowBlur = 16;
+  context.shadowOffsetY = 3;
   context.font = '700 76px "Pretendard", sans-serif';
   const caption = $("#shareCardCaption").value.trim() || "오늘도 한 걸음, STRIDE ON.";
   drawCanvasText(context, caption, 80, 250, width - 160, 90, 2);
@@ -1607,6 +1610,8 @@ function renderShareCard() {
   context.fillStyle = "rgba(235, 248, 255, .82)";
   context.font = '500 32px "Pretendard", sans-serif';
   context.fillText(formatStartTime(activity.startTime), 82, 420);
+  context.shadowBlur = 0;
+  context.shadowOffsetY = 0;
 
   const stats = [
     ["DISTANCE", `${(activity.totalDistance / 1000).toFixed(2)} km`],
@@ -1621,17 +1626,22 @@ function renderShareCard() {
     const row = Math.floor(index / 2);
     const x = 80 + column * 468;
     const y = 500 + row * 190;
-    context.fillStyle = "rgba(3, 14, 24, .72)";
+    context.fillStyle = "rgba(3, 14, 24, .22)";
     context.fillRect(x, y, 430, 154);
-    context.strokeStyle = "rgba(80, 236, 255, .5)";
+    context.strokeStyle = "rgba(80, 236, 255, .72)";
     context.lineWidth = 2;
     context.strokeRect(x, y, 430, 154);
     context.fillStyle = "rgba(173, 202, 215, .86)";
+    context.shadowColor = "rgba(0, 0, 0, .95)";
+    context.shadowBlur = 10;
+    context.shadowOffsetY = 2;
     context.font = '500 25px "Orbitron", sans-serif';
     context.fillText(label, x + 28, y + 43);
     context.fillStyle = "#f4fbff";
     context.font = '700 42px "Orbitron", sans-serif';
     context.fillText(value, x + 28, y + 108);
+    context.shadowBlur = 0;
+    context.shadowOffsetY = 0;
   });
 
   const accent = context.createLinearGradient(80, 0, width - 80, 0);
@@ -1641,11 +1651,14 @@ function renderShareCard() {
   context.fillStyle = accent;
   context.fillRect(80, 1112, width - 160, 7);
   context.fillStyle = "#f2fbff";
+  context.shadowColor = "rgba(0, 0, 0, .9)";
+  context.shadowBlur = 10;
   context.font = '600 34px "Orbitron", sans-serif';
   context.fillText("STRIDE ON", 80, 1195);
   context.fillStyle = "rgba(173, 202, 215, .9)";
   context.font = '500 25px "Pretendard", sans-serif';
   context.fillText("Made by ZIONKOO · Data from your FIT activity", 80, 1244);
+  context.shadowBlur = 0;
 }
 
 function drawCoverImage(context, image, x, y, width, height) {
