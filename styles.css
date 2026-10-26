@@ -1187,6 +1187,8 @@ footer { border-color: var(--line); }
 .garmin-sync-form label { min-width: 0; color: var(--muted); font-size: .75rem; }
 .garmin-sync-form input { display: block; width: 100%; height: 46px; margin-top: 7px; padding: 0 12px; color: var(--ink); border: 1px solid rgba(80,236,255,.24); background: rgba(2,8,13,.86); }
 .garmin-sync-form label > small { display: block; margin-top: 6px; color: var(--muted); font-size: .62rem; }
+.garmin-month-field { grid-column: 1 / -1; }
+.garmin-month-field input { max-width: 280px; color-scheme: dark; }
 .secret-field { position: relative; }
 .secret-field input { padding-right: 58px; }
 .secret-field button { position: absolute; right: 7px; top: 14px; height: 32px; padding: 0 8px; color: var(--cyan); border: 0; background: transparent; font-size: .65rem; }

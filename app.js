@@ -340,6 +340,7 @@ function openGarminSyncDialog() {
   const form = $("#garminSyncForm");
   form.elements.endpoint.value = garminSettings.endpoint;
   form.elements.accessCode.value = garminSettings.accessCode;
+  form.elements.syncMonth.value = toMonthInputValue(new Date());
   form.elements.accessCode.type = "password";
   $("#toggleGarminAccessCode").textContent = "보기";
   updateGarminSyncState(
@@ -384,22 +385,25 @@ async function testGarminConnection() {
 async function syncGarminActivities() {
   if (!readGarminSettingsFromForm()) return;
   const button = $("#syncGarminActivitiesButton");
+  const monthInput = $("#garminSyncMonth");
+  const [year, month] = monthInput.value.split("-").map(Number);
+  const monthStart = new Date(year, month - 1, 1);
+  const monthEnd = new Date(year, month, 0);
+  const monthLabel = `${year}년 ${month}월`;
   button.disabled = true;
-  updateGarminSyncState("working", "최근 러닝 확인 중", "Garmin Connect의 최근 활동 목록을 불러오고 있습니다.");
+  monthInput.disabled = true;
+  updateGarminSyncState("working", `${monthLabel} 확인 중`, "Garmin Connect에서 선택한 달의 러닝을 불러오고 있습니다.");
   $("#garminSyncResults").innerHTML = "";
 
   try {
-    const end = toDateInputValue(new Date());
-    const startDate = new Date();
-    startDate.setDate(startDate.getDate() - 90);
-    const response = await garminRequest(`/api/activities?start=0&limit=30&startDate=${toDateInputValue(startDate)}&endDate=${end}&activityType=running`);
+    const response = await garminRequest(`/api/activities?start=0&limit=100&startDate=${toDateInputValue(monthStart)}&endDate=${toDateInputValue(monthEnd)}&activityType=running`);
     const payload = await response.json();
     const available = normalizeGarminActivities(payload);
     const known = new Set(runnerProfile.garminActivityIds || []);
-    const pending = available.filter((item) => item.id && !known.has(item.id)).slice(0, 10);
+    const pending = available.filter((item) => item.id && !known.has(item.id));
 
     if (!pending.length) {
-      updateGarminSyncState("connected", "최신 상태입니다", available.length ? "새로 가져올 러닝이 없습니다." : "최근 90일 동안 러닝 활동을 찾지 못했습니다.");
+      updateGarminSyncState("connected", `${monthLabel} 최신 상태`, available.length ? "이 달의 러닝은 모두 저장되어 있습니다." : "선택한 달에 러닝 활동이 없습니다.");
       $("#garminSyncResults").innerHTML = '<p class="garmin-result-empty">이미 저장된 기록은 날짜 선택에서 다시 열 수 있습니다.</p>';
       return;
     }
@@ -422,7 +426,7 @@ async function syncGarminActivities() {
     renderTrainingCenter();
     activity = decodedActivities.at(-1);
     renderDashboard(activity);
-    updateGarminSyncState("connected", `${decodedActivities.length}개 러닝 동기화 완료`, "가장 최근 기록의 분석 화면을 표시합니다.");
+    updateGarminSyncState("connected", `${monthLabel} · ${decodedActivities.length}개 완료`, "가장 최근 기록의 분석 화면을 표시합니다.");
     window.setTimeout(() => {
       $("#garminSyncDialog").close();
       setView(dashboardView);
@@ -432,6 +436,7 @@ async function syncGarminActivities() {
     console.error(error);
     updateGarminSyncState("error", "동기화 실패", garminErrorMessage(error));
   } finally {
+    monthInput.disabled = false;
     if (!$("#garminSyncStatus").textContent.includes("연결됨")) button.disabled = false;
   }
 }
@@ -1299,7 +1304,7 @@ async function importRunnerData(event) {
 
 function initializePwa() {
   if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("./sw.js?v=20261026-19").catch(() => {});
+    navigator.serviceWorker.register("./sw.js?v=20261026-21").catch(() => {});
   }
   const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
   const isAndroid = /android/i.test(navigator.userAgent);
@@ -1663,21 +1668,21 @@ function renderShareCard() {
     const column = index % 3;
     const row = Math.floor(index / 3);
     const x = 80 + column * 310;
-    const y = 700 + row * 120;
-    context.fillStyle = "rgba(3, 14, 24, .17)";
-    context.fillRect(x, y, 290, 96);
+    const y = 895 + row * 102;
+    context.fillStyle = "rgba(3, 14, 24, .14)";
+    context.fillRect(x, y, 290, 88);
     context.strokeStyle = "rgba(80, 236, 255, .72)";
     context.lineWidth = 2;
-    context.strokeRect(x, y, 290, 96);
+    context.strokeRect(x, y, 290, 88);
     context.fillStyle = "rgba(173, 202, 215, .86)";
     context.shadowColor = "rgba(0, 0, 0, .95)";
     context.shadowBlur = 8;
     context.shadowOffsetY = 2;
     context.font = '500 16px "Orbitron", sans-serif';
-    context.fillText(label, x + 18, y + 27);
+    context.fillText(label, x + 18, y + 25);
     context.fillStyle = "#f4fbff";
-    context.font = '700 27px "Orbitron", sans-serif';
-    context.fillText(value, x + 18, y + 68);
+    context.font = '700 25px "Orbitron", sans-serif';
+    context.fillText(value, x + 18, y + 64);
     context.shadowBlur = 0;
     context.shadowOffsetY = 0;
   });
@@ -1687,15 +1692,15 @@ function renderShareCard() {
   accent.addColorStop(0.5, "#5978ff");
   accent.addColorStop(1, "#ff3df2");
   context.fillStyle = accent;
-  context.fillRect(80, 1010, width - 160, 7);
+  context.fillRect(80, 1138, width - 160, 7);
   context.fillStyle = "#f2fbff";
   context.shadowColor = "rgba(0, 0, 0, .9)";
   context.shadowBlur = 10;
-  context.font = '600 34px "Orbitron", sans-serif';
-  context.fillText("STRIDE ON", 80, 1098);
+  context.font = '600 32px "Orbitron", sans-serif';
+  context.fillText("STRIDE ON", 80, 1210);
   context.fillStyle = "rgba(173, 202, 215, .9)";
-  context.font = '500 25px "Pretendard", sans-serif';
-  context.fillText("Made by ZIONKOO · Data from your FIT activity", 80, 1147);
+  context.font = '500 23px "Pretendard", sans-serif';
+  context.fillText("Made by ZIONKOO · Data from your FIT activity", 80, 1255);
   context.shadowBlur = 0;
 }
 
@@ -2530,14 +2535,18 @@ function startOfSundayWeek(date) {
 
 function startOfWeek(date) {
   const day = startOfLocalDay(date);
-  const offset = day.getDay() === 0 ? -6 : 1 - day.getDay();
-  day.setDate(day.getDate() + offset);
+  day.setDate(day.getDate() - day.getDay());
   return day;
 }
 
 function toDateInputValue(date) {
   const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
   return local.toISOString().slice(0, 10);
+}
+
+function toMonthInputValue(date) {
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+  return local.toISOString().slice(0, 7);
 }
 
 function dateFromInput(value) {
