@@ -19,6 +19,7 @@ let currentPaceCsvUrl = null;
 let calendarCursor = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
 let deferredInstallPrompt = null;
 let liveClockDateKey = "";
+let sharePhoto = null;
 
 const PROFILE_STORAGE_KEY = "strionProfileV1";
 const COLLAPSE_STORAGE_KEY = "strionCollapsedSectionsV1";
@@ -150,6 +151,12 @@ $("#testGarminSyncButton").addEventListener("click", testGarminConnection);
 $("#syncGarminActivitiesButton").addEventListener("click", syncGarminActivities);
 $("#toggleGarminAccessCode").addEventListener("click", toggleGarminAccessCode);
 $("#dashboardModeButton").addEventListener("click", toggleDashboardMode);
+$("#openShareCardButton").addEventListener("click", openShareCardDialog);
+$("#closeShareCardButton").addEventListener("click", () => $("#shareCardDialog").close());
+$("#sharePhotoInput").addEventListener("change", loadSharePhoto);
+$("#shareCardCaption").addEventListener("input", renderShareCard);
+$("#shareRunCardButton").addEventListener("click", shareRunCard);
+$("#downloadRunCardButton").addEventListener("click", downloadRunCard);
 $("#postRunForm").addEventListener("submit", savePostRunCheckIn);
 $("#postRunForm").elements.rpe.addEventListener("input", (event) => {
   $("#rpeValue").textContent = event.currentTarget.value;
@@ -1254,7 +1261,7 @@ async function importRunnerData(event) {
 
 function initializePwa() {
   if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("./sw.js?v=20261024-11").catch(() => {});
+    navigator.serviceWorker.register("./sw.js?v=20261026-17").catch(() => {});
   }
   const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
   const isAndroid = /android/i.test(navigator.userAgent);
@@ -1522,6 +1529,201 @@ function renderDashboard(data) {
   renderHeartRateZones(data);
   renderRoute(data);
   renderDynamics(data);
+}
+
+function openShareCardDialog() {
+  if (!activity) {
+    window.alert("먼저 FIT 파일을 불러와 러닝 기록을 분석해주세요.");
+    return;
+  }
+  renderShareCard();
+  $("#shareCardDialog").showModal();
+}
+
+function loadSharePhoto(event) {
+  const file = event.currentTarget.files?.[0];
+  if (!file) return;
+  if (!file.type.startsWith("image/")) {
+    $("#shareCardStatus").textContent = "이미지 파일을 선택해주세요.";
+    return;
+  }
+  const url = URL.createObjectURL(file);
+  const image = new Image();
+  image.onload = () => {
+    sharePhoto = image;
+    URL.revokeObjectURL(url);
+    renderShareCard();
+    $("#shareCardStatus").textContent = "사진을 적용했습니다. 공유하거나 이미지로 저장할 수 있습니다.";
+  };
+  image.onerror = () => {
+    URL.revokeObjectURL(url);
+    $("#shareCardStatus").textContent = "사진을 읽지 못했습니다. 다른 이미지를 선택해주세요.";
+  };
+  image.src = url;
+}
+
+function renderShareCard() {
+  if (!activity) return;
+  const canvas = $("#shareCardCanvas");
+  const context = canvas.getContext("2d");
+  const width = canvas.width;
+  const height = canvas.height;
+
+  context.clearRect(0, 0, width, height);
+  const background = context.createLinearGradient(0, 0, width, height);
+  background.addColorStop(0, "#07111d");
+  background.addColorStop(0.55, "#082638");
+  background.addColorStop(1, "#0a1324");
+  context.fillStyle = background;
+  context.fillRect(0, 0, width, height);
+
+  if (sharePhoto) {
+    drawCoverImage(context, sharePhoto, 0, 0, width, height);
+    const overlay = context.createLinearGradient(0, 0, 0, height);
+    overlay.addColorStop(0, "rgba(1, 8, 15, .16)");
+    overlay.addColorStop(0.45, "rgba(1, 8, 15, .38)");
+    overlay.addColorStop(1, "rgba(1, 8, 15, .94)");
+    context.fillStyle = overlay;
+    context.fillRect(0, 0, width, height);
+  } else {
+    drawShareGrid(context, width, height);
+  }
+
+  context.strokeStyle = "rgba(80, 236, 255, .8)";
+  context.lineWidth = 3;
+  context.strokeRect(38, 38, width - 76, height - 76);
+  context.shadowColor = "#50ecff";
+  context.shadowBlur = 22;
+  context.fillStyle = "#50ecff";
+  context.font = '600 42px "Orbitron", sans-serif';
+  context.fillText("STRION // RUN LOG", 80, 118);
+  context.shadowBlur = 0;
+
+  context.fillStyle = "#f2fbff";
+  context.font = '700 76px "Pretendard", sans-serif';
+  const caption = $("#shareCardCaption").value.trim() || "오늘도 한 걸음, STRIDE ON.";
+  drawCanvasText(context, caption, 80, 250, width - 160, 90, 2);
+
+  context.fillStyle = "rgba(235, 248, 255, .82)";
+  context.font = '500 32px "Pretendard", sans-serif';
+  context.fillText(formatStartTime(activity.startTime), 82, 420);
+
+  const stats = [
+    ["DISTANCE", `${(activity.totalDistance / 1000).toFixed(2)} km`],
+    ["TIME", formatDuration(activity.totalTime)],
+    ["AVG PACE", `${formatPace(speedToPace(activity.averageSpeed))} /km`],
+    ["HEART RATE", `${roundOrDash(activity.averageHeartRate)} bpm`],
+    ["CADENCE", `${roundOrDash(activity.averageCadence)} spm`],
+    ["CALORIES", activity.calories > 0 ? `${Math.round(activity.calories)} kcal` : "--"],
+  ];
+  stats.forEach(([label, value], index) => {
+    const column = index % 2;
+    const row = Math.floor(index / 2);
+    const x = 80 + column * 468;
+    const y = 500 + row * 190;
+    context.fillStyle = "rgba(3, 14, 24, .72)";
+    context.fillRect(x, y, 430, 154);
+    context.strokeStyle = "rgba(80, 236, 255, .5)";
+    context.lineWidth = 2;
+    context.strokeRect(x, y, 430, 154);
+    context.fillStyle = "rgba(173, 202, 215, .86)";
+    context.font = '500 25px "Orbitron", sans-serif';
+    context.fillText(label, x + 28, y + 43);
+    context.fillStyle = "#f4fbff";
+    context.font = '700 42px "Orbitron", sans-serif';
+    context.fillText(value, x + 28, y + 108);
+  });
+
+  const accent = context.createLinearGradient(80, 0, width - 80, 0);
+  accent.addColorStop(0, "#50ecff");
+  accent.addColorStop(0.5, "#5978ff");
+  accent.addColorStop(1, "#ff3df2");
+  context.fillStyle = accent;
+  context.fillRect(80, 1112, width - 160, 7);
+  context.fillStyle = "#f2fbff";
+  context.font = '600 34px "Orbitron", sans-serif';
+  context.fillText("STRIDE ON", 80, 1195);
+  context.fillStyle = "rgba(173, 202, 215, .9)";
+  context.font = '500 25px "Pretendard", sans-serif';
+  context.fillText("Made by ZIONKOO · Data from your FIT activity", 80, 1244);
+}
+
+function drawCoverImage(context, image, x, y, width, height) {
+  const scale = Math.max(width / image.naturalWidth, height / image.naturalHeight);
+  const drawWidth = image.naturalWidth * scale;
+  const drawHeight = image.naturalHeight * scale;
+  context.drawImage(image, x + (width - drawWidth) / 2, y + (height - drawHeight) / 2, drawWidth, drawHeight);
+}
+
+function drawShareGrid(context, width, height) {
+  context.save();
+  context.strokeStyle = "rgba(80, 236, 255, .08)";
+  context.lineWidth = 1;
+  for (let x = 0; x <= width; x += 72) {
+    context.beginPath(); context.moveTo(x, 0); context.lineTo(x, height); context.stroke();
+  }
+  for (let y = 0; y <= height; y += 72) {
+    context.beginPath(); context.moveTo(0, y); context.lineTo(width, y); context.stroke();
+  }
+  context.restore();
+}
+
+function drawCanvasText(context, text, x, y, maxWidth, lineHeight, maxLines) {
+  const characters = [...text];
+  const lines = [];
+  let line = "";
+  characters.forEach((character) => {
+    const candidate = line + character;
+    if (context.measureText(candidate).width > maxWidth && line) {
+      lines.push(line);
+      line = character;
+    } else line = candidate;
+  });
+  if (line) lines.push(line);
+  lines.slice(0, maxLines).forEach((value, index) => context.fillText(value, x, y + index * lineHeight));
+}
+
+function createShareCardFile() {
+  renderShareCard();
+  return new Promise((resolve, reject) => {
+    $("#shareCardCanvas").toBlob((blob) => {
+      if (!blob) reject(new Error("이미지를 만들지 못했습니다."));
+      else resolve(new File([blob], `STRION-${toDateInputValue(activity.startTime)}.png`, { type: "image/png" }));
+    }, "image/png", 0.96);
+  });
+}
+
+async function shareRunCard() {
+  try {
+    const file = await createShareCardFile();
+    if (navigator.share && navigator.canShare?.({ files: [file] })) {
+      await navigator.share({ files: [file], title: "STRION 러닝 기록", text: "오늘의 러닝 기록 · STRIDE ON" });
+      $("#shareCardStatus").textContent = "공유 메뉴로 기록 카드를 보냈습니다.";
+    } else {
+      downloadFile(file);
+      $("#shareCardStatus").textContent = "이 브라우저는 이미지 공유를 지원하지 않아 PNG로 저장했습니다.";
+    }
+  } catch (error) {
+    if (error?.name !== "AbortError") $("#shareCardStatus").textContent = error.message || "공유 중 문제가 발생했습니다.";
+  }
+}
+
+async function downloadRunCard() {
+  try {
+    downloadFile(await createShareCardFile());
+    $("#shareCardStatus").textContent = "STRION 기록 카드를 이미지로 저장했습니다.";
+  } catch (error) {
+    $("#shareCardStatus").textContent = error.message || "이미지를 저장하지 못했습니다.";
+  }
+}
+
+function downloadFile(file) {
+  const url = URL.createObjectURL(file);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = file.name;
+  anchor.click();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 function activitySummaryId(data) {
@@ -1834,19 +2036,69 @@ function renderTimeline(key) {
 
 function renderSplits(data) {
   const computed = getActivitySplits(data);
+  const changed = computed.filter((split) => split.dynamicsStatus?.level === "breakdown");
+  const caution = computed.filter((split) => split.dynamicsStatus?.level === "caution");
+  const available = computed.filter((split) => split.dynamicsStatus?.level !== "none");
+  $("#splitDynamicsInsight").textContent = !available.length
+    ? "이 FIT 기록에는 구간별 러닝 다이내믹스가 없습니다. 지원 센서가 기록한 케이던스·보폭·수직 움직임 데이터가 필요합니다."
+    : changed.length
+      ? `${changed.map((split) => `${split.index}km`).join(", ")} 구간에서 이번 활동 평균보다 두 가지 이상의 폼 지표 변화가 확인됩니다. 피로·경사·노면 영향과 함께 살펴보세요.`
+      : caution.length
+        ? `${caution.map((split) => `${split.index}km`).join(", ")} 구간에 한 가지 폼 지표 변화가 있습니다. 나머지 구간은 활동 평균 범위를 유지했습니다.`
+        : "전 구간에서 케이던스·보폭·수직 움직임이 이번 활동 평균 범위를 안정적으로 유지했습니다.";
   $("#splitsBody").innerHTML = computed.length ? computed.map((split, index) => `
     <tr>
       <td>${index + 1}${split.partial ? "*" : ""} km</td>
       <td>${formatPace(split.pace)} /km</td>
-      <td>${roundOrDash(split.heartRate)} bpm</td>
-      <td>${roundOrDash(split.maxHeartRate)} bpm</td>
+      <td>${roundOrDash(split.heartRate)} / ${roundOrDash(split.maxHeartRate)} bpm</td>
       <td>${formatSigned(split.elevation)} m</td>
+      <td>${formatDecimal(split.cadence, 0)} spm</td>
+      <td>${formatDecimal(split.stepLength, 2)} m</td>
+      <td>${formatDecimal(split.verticalOscillation, 1)} cm</td>
+      <td>${formatDecimal(split.verticalRatio, 1)}%</td>
+      <td><span class="split-dynamics-status ${split.dynamicsStatus.level}" title="${escapeHtml(split.dynamicsStatus.note)}">${split.dynamicsStatus.label}</span><small class="split-dynamics-detail">${escapeHtml(split.dynamicsStatus.note)}</small></td>
     </tr>
-  `).join("") : `<tr><td colspan="5">구간 데이터를 찾지 못했습니다.</td></tr>`;
+  `).join("") : `<tr><td colspan="9">구간 데이터를 찾지 못했습니다.</td></tr>`;
 }
 
 function getActivitySplits(data) {
-  return data.laps.length ? data.laps.map(lapToSplit) : computeKilometerSplits(data.points);
+  const splits = data.laps.length ? buildLapSplits(data.laps, data.points) : computeKilometerSplits(data.points);
+  return annotateSplitDynamics(splits);
+}
+
+function buildLapSplits(laps, points) {
+  return laps.map((lap, index) => {
+    const startMs = new Date(lap.startTime || laps[index - 1]?.timestamp || points[0]?.timestamp).getTime();
+    const endMs = new Date(lap.timestamp).getTime();
+    const segment = points.filter((point) => {
+      const pointMs = point.timestamp?.getTime?.();
+      return Number.isFinite(pointMs)
+        && (!Number.isFinite(startMs) || pointMs >= startMs)
+        && (!Number.isFinite(endMs) || pointMs <= endMs);
+    });
+    return lapToSplit(lap, segment);
+  });
+}
+
+function annotateSplitDynamics(splits) {
+  const keys = ["cadence", "stepLength", "verticalOscillation", "verticalRatio"];
+  const baseline = Object.fromEntries(keys.map((key) => [key, average(splits.map((split) => split[key]))]));
+  return splits.map((split, index) => {
+    const changes = [];
+    if (Number.isFinite(split.cadence) && Number.isFinite(baseline.cadence) && split.cadence < baseline.cadence * 0.96) changes.push("케이던스↓");
+    if (Number.isFinite(split.stepLength) && Number.isFinite(baseline.stepLength) && split.stepLength < baseline.stepLength * 0.93) changes.push("보폭↓");
+    if (Number.isFinite(split.verticalOscillation) && Number.isFinite(baseline.verticalOscillation) && split.verticalOscillation > baseline.verticalOscillation * 1.08) changes.push("수직 진폭↑");
+    if (Number.isFinite(split.verticalRatio) && Number.isFinite(baseline.verticalRatio) && split.verticalRatio > baseline.verticalRatio * 1.08) changes.push("수직 비율↑");
+    const hasDynamics = keys.some((key) => Number.isFinite(split[key]));
+    const dynamicsStatus = !hasDynamics
+      ? { level: "none", label: "데이터 없음", note: "센서 데이터 없음" }
+      : changes.length >= 2
+        ? { level: "breakdown", label: "흐트러짐", note: changes.join(" · ") }
+        : changes.length === 1
+          ? { level: "caution", label: "주의", note: changes[0] }
+          : { level: "stable", label: "유지", note: "활동 평균 범위 유지" };
+    return { ...split, index: index + 1, dynamicsStatus };
+  });
 }
 
 function renderHeartPaceAnalysis(data) {
@@ -2090,18 +2342,26 @@ function splitFromPoints(start, end, points, partial) {
     heartRate: average(points.map((point) => point.heartRate)),
     maxHeartRate: maximum(points.map((point) => point.heartRate)),
     elevation: Number.isFinite(start.altitude) && Number.isFinite(end.altitude) ? end.altitude - start.altitude : null,
+    cadence: average(points.map((point) => point.cadence)),
+    stepLength: divideOrNull(average(points.map((point) => point.stepLength)), 1000),
+    verticalOscillation: divideOrNull(average(points.map((point) => point.verticalOscillation)), 10),
+    verticalRatio: average(points.map((point) => point.verticalRatio)),
     partial,
   };
 }
 
-function lapToSplit(lap) {
+function lapToSplit(lap, points = []) {
   const seconds = firstNumber(lap.totalTimerTime, lap.totalElapsedTime, 0);
   const distanceKm = firstNumber(lap.totalDistance, 1000) / 1000;
   return {
     pace: seconds / Math.max(distanceKm, 0.01),
-    heartRate: firstNullableNumber(lap.avgHeartRate),
-    maxHeartRate: firstNullableNumber(lap.maxHeartRate),
+    heartRate: firstNullableNumber(lap.avgHeartRate, average(points.map((point) => point.heartRate))),
+    maxHeartRate: firstNullableNumber(lap.maxHeartRate, maximum(points.map((point) => point.heartRate))),
     elevation: firstNullableNumber(lap.totalAscent),
+    cadence: firstNullableNumber(runningCadence(lap.avgRunningCadence), runningCadence(lap.avgCadence), average(points.map((point) => point.cadence))),
+    stepLength: divideOrNull(firstNullableNumber(lap.avgStepLength, lap.avgStrideLength, average(points.map((point) => point.stepLength))), 1000),
+    verticalOscillation: divideOrNull(firstNullableNumber(lap.avgVerticalOscillation, average(points.map((point) => point.verticalOscillation))), 10),
+    verticalRatio: firstNullableNumber(lap.avgVerticalRatio, average(points.map((point) => point.verticalRatio))),
     partial: distanceKm < 0.95,
   };
 }
@@ -2281,3 +2541,4 @@ function clamp(value, minimum, maximumValue) { return Math.min(maximumValue, Mat
 function divideOrNull(value, divisor) { return Number.isFinite(value) ? value / divisor : null; }
 function maximum(values) { const valid = values.filter(Number.isFinite); return valid.length ? Math.max(...valid) : null; }
 function roundOrDash(value) { return Number.isFinite(value) ? String(Math.round(value)) : "--"; }
+function formatDecimal(value, digits = 1) { return Number.isFinite(value) ? Number(value).toFixed(digits) : "--"; }

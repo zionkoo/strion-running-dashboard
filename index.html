@@ -13,7 +13,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Gowun+Dodum&family=Orbitron:wght@500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="styles.css?v=20261026-16" />
+    <link rel="stylesheet" href="styles.css?v=20261026-17" />
   </head>
   <body>
     <div class="noise" aria-hidden="true"></div>
@@ -331,7 +331,10 @@
               <h2 id="quickReviewTitle">오늘의 러닝 한눈에 보기</h2>
               <p id="quickReviewVerdict">핵심 기록과 러닝 다이내믹스를 정리합니다.</p>
             </div>
-            <button id="dashboardModeButton" class="outline-button dashboard-mode-button" type="button">상세 분석 보기</button>
+            <div class="quick-review-actions">
+              <button id="openShareCardButton" class="outline-button dashboard-mode-button" type="button">기록 카드 만들기</button>
+              <button id="dashboardModeButton" class="outline-button dashboard-mode-button" type="button">상세 분석 보기</button>
+            </div>
           </div>
           <div class="quick-review-columns">
             <div>
@@ -446,9 +449,10 @@
                 <h2>구간 페이스</h2>
               </div>
             </div>
+            <p id="splitDynamicsInsight" class="split-dynamics-insight">각 구간의 러닝 다이내믹스를 이번 활동 평균과 비교합니다.</p>
             <div class="table-wrap">
-              <table>
-                <thead><tr><th>구간</th><th>페이스</th><th>평균 심박</th><th>최대 심박</th><th>고도차</th></tr></thead>
+              <table class="split-table">
+                <thead><tr><th>구간</th><th>페이스</th><th>심박 평균/최대</th><th>고도차</th><th>케이던스</th><th>보폭</th><th>수직 진폭</th><th>수직 비율</th><th>폼 변화</th></tr></thead>
                 <tbody id="splitsBody"></tbody>
               </table>
             </div>
@@ -500,6 +504,37 @@
         <button id="retryButton" class="primary-button" type="button">다른 파일 선택</button>
       </section>
     </main>
+
+    <dialog id="shareCardDialog" class="profile-dialog share-card-dialog">
+      <div class="dialog-heading">
+        <div>
+          <p class="section-label">RUN &amp; SHARE</p>
+          <h2>나만의 러닝 기록 카드</h2>
+        </div>
+        <button id="closeShareCardButton" class="icon-button" type="button" aria-label="닫기">×</button>
+      </div>
+      <div class="share-card-layout">
+        <section class="share-card-controls">
+          <label class="share-photo-picker" for="sharePhotoInput">
+            <span>내 사진 선택</span>
+            <strong>사진 위에 오늘의 기록을 담습니다</strong>
+            <input id="sharePhotoInput" type="file" accept="image/*" hidden />
+          </label>
+          <p class="share-privacy">선택한 사진과 FIT 기록은 서버에 전송되지 않고 이 브라우저 안에서만 합성됩니다.</p>
+          <label class="share-caption-field">카드 문구
+            <input id="shareCardCaption" maxlength="36" value="오늘도 한 걸음, STRIDE ON." />
+          </label>
+          <div class="share-card-actions">
+            <button id="shareRunCardButton" class="primary-button" type="button">SNS로 공유</button>
+            <button id="downloadRunCardButton" class="outline-button" type="button">이미지 저장</button>
+          </div>
+          <p id="shareCardStatus" class="share-card-status" aria-live="polite">사진 없이도 STRION 배경으로 기록 카드를 만들 수 있습니다.</p>
+        </section>
+        <section class="share-card-preview" aria-label="러닝 기록 카드 미리보기">
+          <canvas id="shareCardCanvas" width="1080" height="1350"></canvas>
+        </section>
+      </div>
+    </dialog>
 
     <dialog id="profileDialog" class="profile-dialog">
       <div class="dialog-heading">
@@ -618,6 +653,6 @@
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-    <script type="module" src="app.js?v=20261026-16"></script>
+    <script type="module" src="app.js?v=20261026-17"></script>
   </body>
 </html>
