@@ -1304,7 +1304,7 @@ async function importRunnerData(event) {
 
 function initializePwa() {
   if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("./sw.js?v=20261026-23").catch(() => {});
+    navigator.serviceWorker.register("./sw.js?v=20261026-24").catch(() => {});
   }
   const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
   const isAndroid = /android/i.test(navigator.userAgent);
@@ -1652,7 +1652,7 @@ function renderShareCard() {
 
   context.fillStyle = "rgba(235, 248, 255, .82)";
   context.font = '500 32px "Pretendard", sans-serif';
-  context.fillText(formatStartTime(activity.startTime), 82, 420);
+  context.fillText(formatStartTime(activity.startTime), 82, 982);
   context.shadowBlur = 0;
   context.shadowOffsetY = 0;
 
