@@ -1288,8 +1288,9 @@ footer { border-color: var(--line); }
 .share-caption-field input { width: 100%; height: 48px; margin-top: 7px; padding: 0 12px; color: var(--ink); border: 1px solid rgba(80,236,255,.28); background: rgba(2,8,13,.82); }
 .share-card-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
 .share-card-actions button { min-height: 48px; }
-.share-card-preview { padding: 11px; border: 1px solid rgba(80,236,255,.22); background: rgba(2,8,13,.72); box-shadow: 0 0 28px rgba(80,236,255,.07); }
+.share-card-preview { display: grid; gap: 10px; padding: 11px; border: 1px solid rgba(80,236,255,.22); background: rgba(2,8,13,.72); box-shadow: 0 0 28px rgba(80,236,255,.07); }
 .share-card-preview canvas { display: block; width: 100%; height: auto; aspect-ratio: 4 / 5; background: #07111d; }
+.share-card-preview .share-card-actions { margin-top: 2px; }
 .quick-review-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 21px; }
 .quick-review-columns h3 { margin: 0 0 9px; color: var(--muted); font: 500 .62rem "Orbitron", sans-serif; letter-spacing: .12em; }
 .quick-metric-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; }

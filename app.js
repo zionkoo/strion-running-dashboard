@@ -1261,7 +1261,7 @@ async function importRunnerData(event) {
 
 function initializePwa() {
   if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("./sw.js?v=20261026-18").catch(() => {});
+    navigator.serviceWorker.register("./sw.js?v=20261026-19").catch(() => {});
   }
   const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
   const isAndroid = /android/i.test(navigator.userAgent);
@@ -1622,24 +1622,24 @@ function renderShareCard() {
     ["CALORIES", activity.calories > 0 ? `${Math.round(activity.calories)} kcal` : "--"],
   ];
   stats.forEach(([label, value], index) => {
-    const column = index % 2;
-    const row = Math.floor(index / 2);
-    const x = 80 + column * 468;
-    const y = 500 + row * 190;
-    context.fillStyle = "rgba(3, 14, 24, .22)";
-    context.fillRect(x, y, 430, 154);
+    const column = index % 3;
+    const row = Math.floor(index / 3);
+    const x = 80 + column * 310;
+    const y = 610 + row * 132;
+    context.fillStyle = "rgba(3, 14, 24, .17)";
+    context.fillRect(x, y, 290, 108);
     context.strokeStyle = "rgba(80, 236, 255, .72)";
     context.lineWidth = 2;
-    context.strokeRect(x, y, 430, 154);
+    context.strokeRect(x, y, 290, 108);
     context.fillStyle = "rgba(173, 202, 215, .86)";
     context.shadowColor = "rgba(0, 0, 0, .95)";
-    context.shadowBlur = 10;
+    context.shadowBlur = 8;
     context.shadowOffsetY = 2;
-    context.font = '500 25px "Orbitron", sans-serif';
-    context.fillText(label, x + 28, y + 43);
+    context.font = '500 18px "Orbitron", sans-serif';
+    context.fillText(label, x + 20, y + 31);
     context.fillStyle = "#f4fbff";
-    context.font = '700 42px "Orbitron", sans-serif';
-    context.fillText(value, x + 28, y + 108);
+    context.font = '700 29px "Orbitron", sans-serif';
+    context.fillText(value, x + 20, y + 77);
     context.shadowBlur = 0;
     context.shadowOffsetY = 0;
   });
@@ -1649,15 +1649,15 @@ function renderShareCard() {
   accent.addColorStop(0.5, "#5978ff");
   accent.addColorStop(1, "#ff3df2");
   context.fillStyle = accent;
-  context.fillRect(80, 1112, width - 160, 7);
+  context.fillRect(80, 1015, width - 160, 7);
   context.fillStyle = "#f2fbff";
   context.shadowColor = "rgba(0, 0, 0, .9)";
   context.shadowBlur = 10;
   context.font = '600 34px "Orbitron", sans-serif';
-  context.fillText("STRIDE ON", 80, 1195);
+  context.fillText("STRIDE ON", 80, 1098);
   context.fillStyle = "rgba(173, 202, 215, .9)";
   context.font = '500 25px "Pretendard", sans-serif';
-  context.fillText("Made by ZIONKOO · Data from your FIT activity", 80, 1244);
+  context.fillText("Made by ZIONKOO · Data from your FIT activity", 80, 1147);
   context.shadowBlur = 0;
 }
 
@@ -1723,10 +1723,17 @@ async function shareRunCard() {
 
 async function downloadRunCard() {
   try {
-    downloadFile(await createShareCardFile());
-    $("#shareCardStatus").textContent = "STRION 기록 카드를 이미지로 저장했습니다.";
+    const file = await createShareCardFile();
+    const isAppleMobile = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+    if (isAppleMobile && navigator.share && navigator.canShare?.({ files: [file] })) {
+      await navigator.share({ files: [file], title: "STRION 러닝 기록" });
+      $("#shareCardStatus").textContent = "공유 메뉴에서 ‘이미지 저장’을 선택하면 사진 앱에 보관됩니다.";
+    } else {
+      downloadFile(file);
+      $("#shareCardStatus").textContent = "STRION 기록 카드를 PNG 이미지로 저장했습니다.";
+    }
   } catch (error) {
-    $("#shareCardStatus").textContent = error.message || "이미지를 저장하지 못했습니다.";
+    if (error?.name !== "AbortError") $("#shareCardStatus").textContent = error.message || "이미지를 저장하지 못했습니다.";
   }
 }
 

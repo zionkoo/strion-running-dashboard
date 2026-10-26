@@ -13,7 +13,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Gowun+Dodum&family=Orbitron:wght@500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="styles.css?v=20261026-18" />
+    <link rel="stylesheet" href="styles.css?v=20261026-19" />
   </head>
   <body>
     <div class="noise" aria-hidden="true"></div>
@@ -524,14 +524,14 @@
           <label class="share-caption-field">카드 문구
             <input id="shareCardCaption" maxlength="36" value="오늘도 한 걸음, STRIDE ON." />
           </label>
-          <div class="share-card-actions">
-            <button id="shareRunCardButton" class="primary-button" type="button">SNS로 공유</button>
-            <button id="downloadRunCardButton" class="outline-button" type="button">이미지 저장</button>
-          </div>
-          <p id="shareCardStatus" class="share-card-status" aria-live="polite">사진 없이도 STRION 배경으로 기록 카드를 만들 수 있습니다.</p>
         </section>
         <section class="share-card-preview" aria-label="러닝 기록 카드 미리보기">
           <canvas id="shareCardCanvas" width="1080" height="1350"></canvas>
+          <div class="share-card-actions">
+            <button id="downloadRunCardButton" class="primary-button" type="button">기록 이미지 저장</button>
+            <button id="shareRunCardButton" class="outline-button" type="button">SNS로 공유</button>
+          </div>
+          <p id="shareCardStatus" class="share-card-status" aria-live="polite">사진 없이도 STRION 배경으로 기록 카드를 만들 수 있습니다.</p>
         </section>
       </div>
     </dialog>
@@ -653,6 +653,6 @@
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-    <script type="module" src="app.js?v=20261026-18"></script>
+    <script type="module" src="app.js?v=20261026-19"></script>
   </body>
 </html>
