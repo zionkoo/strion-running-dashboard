@@ -13,7 +13,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Gowun+Dodum&family=Orbitron:wght@500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="styles.css?v=20261026-19" />
+    <link rel="stylesheet" href="styles.css?v=20261026-20" />
   </head>
   <body>
     <div class="noise" aria-hidden="true"></div>
@@ -199,6 +199,27 @@
               <div class="calendar-legend"><span><i class="activity-dot"></i>완료 러닝</span><span><i class="plan-dot"></i>훈련 계획</span></div>
             </article>
           </div>
+
+          <article class="mileage-board" aria-labelledby="mileageBoardTitle">
+            <div class="mileage-board-heading">
+              <div><span class="card-kicker">MILEAGE BOARD</span><h3 id="mileageBoardTitle">주간 · 월간 마일리지</h3></div>
+              <p>저장된 FIT 기록을 기준으로 자동 합산합니다.</p>
+            </div>
+            <div class="mileage-grid">
+              <section class="mileage-card weekly">
+                <span>WEEKLY · SUN–SAT</span>
+                <strong id="weeklyMileageDistance">0.0<small>km</small></strong>
+                <p id="weeklyMileagePeriod">일요일 – 토요일</p>
+                <div><b id="weeklyMileageRuns">0회</b><em id="weeklyMileageTime">0:00</em></div>
+              </section>
+              <section class="mileage-card monthly">
+                <span>MONTHLY</span>
+                <strong id="monthlyMileageDistance">0.0<small>km</small></strong>
+                <p id="monthlyMileagePeriod">이번 달</p>
+                <div><b id="monthlyMileageRuns">0회</b><em id="monthlyMileageTime">0:00</em></div>
+              </section>
+            </div>
+          </article>
 
           <div class="training-center-grid">
             <article class="training-planner">
@@ -653,6 +674,6 @@
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-    <script type="module" src="app.js?v=20261026-19"></script>
+    <script type="module" src="app.js?v=20261026-20"></script>
   </body>
 </html>

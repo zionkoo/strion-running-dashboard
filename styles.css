@@ -1213,6 +1213,21 @@ footer { border-color: var(--line); }
 
 @keyframes garmin-pulse { 50% { opacity: .42; transform: scale(.72); } }
 .training-insights-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 14px; }
+.mileage-board { position: relative; margin-top: 14px; padding: 24px; overflow: hidden; border: 1px solid var(--line); background: linear-gradient(135deg, rgba(7,18,29,.98), rgba(8,29,40,.94)); box-shadow: var(--shadow); }
+.mileage-board::before { content: ""; position: absolute; inset: 0 auto auto 0; width: 112px; height: 2px; background: var(--cyan); box-shadow: 0 0 16px var(--cyan); }
+.mileage-board-heading { display: flex; align-items: end; justify-content: space-between; gap: 20px; margin-bottom: 16px; }
+.mileage-board-heading h3 { margin: 3px 0 0; font-size: 1.25rem; }
+.mileage-board-heading > p { margin: 0; color: var(--muted); font-size: .68rem; }
+.mileage-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.mileage-card { position: relative; min-width: 0; padding: 19px 20px 16px; border: 1px solid rgba(80,236,255,.2); background: rgba(2,8,13,.56); }
+.mileage-card::after { content: ""; position: absolute; inset: 0 0 auto; height: 1px; background: linear-gradient(90deg, var(--cyan), transparent 72%); }
+.mileage-card.monthly::after { background: linear-gradient(90deg, #8ba5ff, #ff3df2, transparent 82%); }
+.mileage-card > span { color: var(--cyan); font: 600 .58rem "Orbitron", sans-serif; letter-spacing: .11em; }
+.mileage-card > strong { display: block; margin-top: 9px; color: var(--ink); font: 600 clamp(2rem, 5vw, 3.25rem) "Orbitron", sans-serif; line-height: 1; text-shadow: 0 0 18px rgba(80,236,255,.16); }
+.mileage-card > strong small { margin-left: 8px; color: var(--muted); font-size: .72rem; }
+.mileage-card > p { margin: 12px 0 15px; color: var(--muted); font-size: .65rem; }
+.mileage-card > div { display: flex; justify-content: space-between; gap: 12px; padding-top: 11px; border-top: 1px solid rgba(80,236,255,.12); }
+.mileage-card b, .mileage-card em { color: var(--ink); font: 500 .68rem "Orbitron", sans-serif; font-style: normal; }
 .weekly-report-card, .run-compare-card { position: relative; overflow: hidden; padding: 24px; border: 1px solid var(--line); background: linear-gradient(145deg, rgba(13,24,35,.96), rgba(7,13,21,.96)); box-shadow: var(--shadow); }
 .weekly-report-card::before, .run-compare-card::before { content: ""; position: absolute; inset: 0 auto auto 0; width: 78px; height: 1px; background: var(--cyan); box-shadow: 0 0 12px var(--cyan); }
 #weeklyReportStatus { color: var(--cyan); font: 600 .68rem "Orbitron", sans-serif; letter-spacing: .08em; }
@@ -1344,6 +1359,10 @@ body.easy-mode .dashboard-heading h1 { font-size: clamp(2.6rem, 5vw, 4.5rem); }
   .run-score-gauge { width: 118px; }
   .run-score-metrics { grid-column: auto; }
   .weekly-report-metrics { grid-template-columns: 1fr; }
+  .mileage-board { padding: 20px 15px; }
+  .mileage-board-heading { align-items: flex-start; flex-direction: column; gap: 7px; }
+  .mileage-grid { grid-template-columns: 1fr; }
+  .mileage-card > strong { font-size: 2.25rem; }
   .compare-selectors { grid-template-columns: 1fr; }
   .comparison-row { grid-template-columns: 1fr 82px 82px; }
   .today-action-card { grid-template-columns: 1fr; padding: 20px 17px; }

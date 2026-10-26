@@ -931,11 +931,49 @@ function renderTrainingCenter() {
       </div>`).join("")
     : '<p class="empty-copy">FIT 파일을 분석하면 러닝 요약이 여기에 쌓입니다.</p>';
   renderWeeklyGoals(activities);
+  renderMileageSummary(activities);
   renderRunningCalendar();
   renderHistoryChart(activities);
   renderWeeklyReport(activities);
   populateRunComparison(activities);
   renderRunnerCommandCenter(activities, workouts);
+}
+
+function renderMileageSummary(activities) {
+  const now = new Date();
+  const weekStart = startOfSundayWeek(now);
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekEnd.getDate() + 7);
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+
+  const summarize = (start, end) => {
+    const records = activities.filter((item) => {
+      const date = dateFromInput(item.date);
+      return date >= start && date < end;
+    });
+    return {
+      distance: records.reduce((sum, item) => sum + (Number(item.distanceKm) || 0), 0),
+      duration: records.reduce((sum, item) => sum + (Number(item.duration) || 0), 0),
+      count: records.length,
+    };
+  };
+
+  const weekly = summarize(weekStart, weekEnd);
+  const monthly = summarize(monthStart, monthEnd);
+  const weekLastDay = new Date(weekEnd);
+  weekLastDay.setDate(weekLastDay.getDate() - 1);
+  const monthLastDay = new Date(monthEnd);
+  monthLastDay.setDate(monthLastDay.getDate() - 1);
+
+  $("#weeklyMileageDistance").innerHTML = `${weekly.distance.toFixed(1)}<small>km</small>`;
+  $("#weeklyMileageRuns").textContent = `${weekly.count}회 러닝`;
+  $("#weeklyMileageTime").textContent = formatDuration(weekly.duration);
+  $("#weeklyMileagePeriod").textContent = `${formatMileageDate(weekStart)} – ${formatMileageDate(weekLastDay)} · 일–토`;
+  $("#monthlyMileageDistance").innerHTML = `${monthly.distance.toFixed(1)}<small>km</small>`;
+  $("#monthlyMileageRuns").textContent = `${monthly.count}회 러닝`;
+  $("#monthlyMileageTime").textContent = formatDuration(monthly.duration);
+  $("#monthlyMileagePeriod").textContent = `${now.getFullYear()}년 ${now.getMonth() + 1}월 · ${formatMileageDate(monthStart)} – ${formatMileageDate(monthLastDay)}`;
 }
 
 function renderRunnerCommandCenter(activities, workouts) {
@@ -1625,21 +1663,21 @@ function renderShareCard() {
     const column = index % 3;
     const row = Math.floor(index / 3);
     const x = 80 + column * 310;
-    const y = 610 + row * 132;
+    const y = 700 + row * 120;
     context.fillStyle = "rgba(3, 14, 24, .17)";
-    context.fillRect(x, y, 290, 108);
+    context.fillRect(x, y, 290, 96);
     context.strokeStyle = "rgba(80, 236, 255, .72)";
     context.lineWidth = 2;
-    context.strokeRect(x, y, 290, 108);
+    context.strokeRect(x, y, 290, 96);
     context.fillStyle = "rgba(173, 202, 215, .86)";
     context.shadowColor = "rgba(0, 0, 0, .95)";
     context.shadowBlur = 8;
     context.shadowOffsetY = 2;
-    context.font = '500 18px "Orbitron", sans-serif';
-    context.fillText(label, x + 20, y + 31);
+    context.font = '500 16px "Orbitron", sans-serif';
+    context.fillText(label, x + 18, y + 27);
     context.fillStyle = "#f4fbff";
-    context.font = '700 29px "Orbitron", sans-serif';
-    context.fillText(value, x + 20, y + 77);
+    context.font = '700 27px "Orbitron", sans-serif';
+    context.fillText(value, x + 18, y + 68);
     context.shadowBlur = 0;
     context.shadowOffsetY = 0;
   });
@@ -1649,7 +1687,7 @@ function renderShareCard() {
   accent.addColorStop(0.5, "#5978ff");
   accent.addColorStop(1, "#ff3df2");
   context.fillStyle = accent;
-  context.fillRect(80, 1015, width - 160, 7);
+  context.fillRect(80, 1010, width - 160, 7);
   context.fillStyle = "#f2fbff";
   context.shadowColor = "rgba(0, 0, 0, .9)";
   context.shadowBlur = 10;
@@ -2484,6 +2522,12 @@ function formatSigned(value) {
 
 function startOfLocalDay(date) { return new Date(date.getFullYear(), date.getMonth(), date.getDate()); }
 
+function startOfSundayWeek(date) {
+  const day = startOfLocalDay(date);
+  day.setDate(day.getDate() - day.getDay());
+  return day;
+}
+
 function startOfWeek(date) {
   const day = startOfLocalDay(date);
   const offset = day.getDay() === 0 ? -6 : 1 - day.getDay();
@@ -2504,6 +2548,10 @@ function dateFromInput(value) {
 function formatCompactDate(value) {
   const date = typeof value === "string" ? dateFromInput(value) : value;
   return new Intl.DateTimeFormat("ko-KR", { month: "short", day: "numeric", weekday: "short" }).format(date);
+}
+
+function formatMileageDate(date) {
+  return `${date.getMonth() + 1}.${String(date.getDate()).padStart(2, "0")}`;
 }
 
 function daysUntil(dateString, today = startOfLocalDay(new Date())) {
