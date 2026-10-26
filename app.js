@@ -1304,7 +1304,7 @@ async function importRunnerData(event) {
 
 function initializePwa() {
   if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("./sw.js?v=20261026-22").catch(() => {});
+    navigator.serviceWorker.register("./sw.js?v=20261026-23").catch(() => {});
   }
   const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
   const isAndroid = /android/i.test(navigator.userAgent);
@@ -1668,21 +1668,21 @@ function renderShareCard() {
     const column = index % 3;
     const row = Math.floor(index / 3);
     const x = 80 + column * 310;
-    const y = 960 + row * 84;
+    const y = 1014 + row * 82;
     context.fillStyle = "rgba(3, 14, 24, .14)";
-    context.fillRect(x, y, 290, 76);
+    context.fillRect(x, y, 290, 72);
     context.strokeStyle = "rgba(80, 236, 255, .72)";
     context.lineWidth = 2;
-    context.strokeRect(x, y, 290, 76);
+    context.strokeRect(x, y, 290, 72);
     context.fillStyle = "rgba(173, 202, 215, .86)";
     context.shadowColor = "rgba(0, 0, 0, .95)";
     context.shadowBlur = 8;
     context.shadowOffsetY = 2;
     context.font = '500 15px "Orbitron", sans-serif';
-    context.fillText(label, x + 18, y + 22);
+    context.fillText(label, x + 18, y + 21);
     context.fillStyle = "#f4fbff";
     context.font = '700 24px "Orbitron", sans-serif';
-    context.fillText(value, x + 18, y + 56);
+    context.fillText(value, x + 18, y + 53);
     context.shadowBlur = 0;
     context.shadowOffsetY = 0;
   });
@@ -1692,15 +1692,15 @@ function renderShareCard() {
   accent.addColorStop(0.5, "#5978ff");
   accent.addColorStop(1, "#ff3df2");
   context.fillStyle = accent;
-  context.fillRect(80, 1148, width - 160, 7);
+  context.fillRect(80, 1190, width - 160, 7);
   context.fillStyle = "#f2fbff";
   context.shadowColor = "rgba(0, 0, 0, .9)";
   context.shadowBlur = 10;
   context.font = '600 32px "Orbitron", sans-serif';
-  context.fillText("STRIDE ON", 80, 1220);
+  context.fillText("STRIDE ON", 80, 1238);
   context.fillStyle = "rgba(173, 202, 215, .9)";
   context.font = '500 23px "Pretendard", sans-serif';
-  context.fillText("Made by ZIONKOO · Data from your FIT activity", 80, 1265);
+  context.fillText("Made by ZIONKOO · Data from your FIT activity", 80, 1278);
   context.shadowBlur = 0;
 }
 
