@@ -1304,7 +1304,7 @@ async function importRunnerData(event) {
 
 function initializePwa() {
   if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("./sw.js?v=20261026-21").catch(() => {});
+    navigator.serviceWorker.register("./sw.js?v=20261026-22").catch(() => {});
   }
   const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
   const isAndroid = /android/i.test(navigator.userAgent);
@@ -1668,21 +1668,21 @@ function renderShareCard() {
     const column = index % 3;
     const row = Math.floor(index / 3);
     const x = 80 + column * 310;
-    const y = 895 + row * 102;
+    const y = 960 + row * 84;
     context.fillStyle = "rgba(3, 14, 24, .14)";
-    context.fillRect(x, y, 290, 88);
+    context.fillRect(x, y, 290, 76);
     context.strokeStyle = "rgba(80, 236, 255, .72)";
     context.lineWidth = 2;
-    context.strokeRect(x, y, 290, 88);
+    context.strokeRect(x, y, 290, 76);
     context.fillStyle = "rgba(173, 202, 215, .86)";
     context.shadowColor = "rgba(0, 0, 0, .95)";
     context.shadowBlur = 8;
     context.shadowOffsetY = 2;
-    context.font = '500 16px "Orbitron", sans-serif';
-    context.fillText(label, x + 18, y + 25);
+    context.font = '500 15px "Orbitron", sans-serif';
+    context.fillText(label, x + 18, y + 22);
     context.fillStyle = "#f4fbff";
-    context.font = '700 25px "Orbitron", sans-serif';
-    context.fillText(value, x + 18, y + 64);
+    context.font = '700 24px "Orbitron", sans-serif';
+    context.fillText(value, x + 18, y + 56);
     context.shadowBlur = 0;
     context.shadowOffsetY = 0;
   });
@@ -1692,15 +1692,15 @@ function renderShareCard() {
   accent.addColorStop(0.5, "#5978ff");
   accent.addColorStop(1, "#ff3df2");
   context.fillStyle = accent;
-  context.fillRect(80, 1138, width - 160, 7);
+  context.fillRect(80, 1148, width - 160, 7);
   context.fillStyle = "#f2fbff";
   context.shadowColor = "rgba(0, 0, 0, .9)";
   context.shadowBlur = 10;
   context.font = '600 32px "Orbitron", sans-serif';
-  context.fillText("STRIDE ON", 80, 1210);
+  context.fillText("STRIDE ON", 80, 1220);
   context.fillStyle = "rgba(173, 202, 215, .9)";
   context.font = '500 23px "Pretendard", sans-serif';
-  context.fillText("Made by ZIONKOO · Data from your FIT activity", 80, 1255);
+  context.fillText("Made by ZIONKOO · Data from your FIT activity", 80, 1265);
   context.shadowBlur = 0;
 }
 
