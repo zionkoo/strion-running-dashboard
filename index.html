@@ -13,7 +13,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Gowun+Dodum&family=Orbitron:wght@500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="styles.css?v=20261027-26" />
+    <link rel="stylesheet" href="styles.css?v=20261027-27" />
   </head>
   <body>
     <div class="noise" aria-hidden="true"></div>
@@ -547,6 +547,10 @@
           </label>
         </section>
         <section class="share-card-preview" aria-label="러닝 기록 카드 미리보기">
+          <div id="shareVideoPreviewWrap" class="share-video-preview-wrap hidden">
+            <span>선택한 영상 미리보기 · 재생 위치가 기록 카드에도 반영됩니다</span>
+            <video id="shareVideoPreview" controls muted playsinline loop preload="metadata"></video>
+          </div>
           <canvas id="shareCardCanvas" width="1080" height="1350"></canvas>
           <div class="share-card-actions">
             <button id="downloadRunCardButton" class="primary-button" type="button">기록 이미지 저장</button>
@@ -678,6 +682,6 @@
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-    <script type="module" src="app.js?v=20261027-26"></script>
+    <script type="module" src="app.js?v=20261027-27"></script>
   </body>
 </html>

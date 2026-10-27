@@ -1593,27 +1593,32 @@ function loadShareMedia(event) {
 
   clearShareVideo();
   if (file.type.startsWith("video/")) {
-    const video = document.createElement("video");
+    const video = $("#shareVideoPreview");
     shareVideoUrl = URL.createObjectURL(file);
     video.src = shareVideoUrl;
     video.muted = true;
     video.loop = true;
     video.playsInline = true;
-    video.preload = "auto";
-    video.addEventListener("loadeddata", async () => {
+    video.preload = "metadata";
+    video.onloadeddata = async () => {
       sharePhoto = null;
       shareVideo = video;
       shareVideoFile = file;
+      video.onplay = animateShareVideo;
+      video.onpause = renderShareCard;
+      video.onseeked = renderShareCard;
+      $("#shareVideoPreviewWrap").classList.remove("hidden");
       $("#downloadRunCardButton").textContent = "기록 영상 저장";
       $("#shareRunCardButton").textContent = "영상 SNS 공유";
+      renderShareCard();
       await video.play().catch(() => {});
-      animateShareVideo();
+      renderShareCard();
       $("#shareCardStatus").textContent = "영상에 기록을 적용했습니다. 최대 15초의 무음 영상으로 저장·공유할 수 있습니다.";
-    }, { once: true });
-    video.addEventListener("error", () => {
+    };
+    video.onerror = () => {
       clearShareVideo();
       $("#shareCardStatus").textContent = "영상을 읽지 못했습니다. 다른 영상 파일을 선택해주세요.";
-    }, { once: true });
+    };
     return;
   }
 
@@ -1625,6 +1630,7 @@ function loadShareMedia(event) {
   const image = new Image();
   image.onload = () => {
     sharePhoto = image;
+    $("#shareVideoPreviewWrap").classList.add("hidden");
     URL.revokeObjectURL(url);
     $("#downloadRunCardButton").textContent = "기록 이미지 저장";
     $("#shareRunCardButton").textContent = "SNS로 공유";
@@ -1641,7 +1647,16 @@ function loadShareMedia(event) {
 function clearShareVideo() {
   if (shareVideoFrame) cancelAnimationFrame(shareVideoFrame);
   shareVideoFrame = null;
-  if (shareVideo) shareVideo.pause();
+  const preview = $("#shareVideoPreview");
+  preview.pause();
+  preview.removeAttribute("src");
+  preview.load();
+  preview.onloadeddata = null;
+  preview.onerror = null;
+  preview.onplay = null;
+  preview.onpause = null;
+  preview.onseeked = null;
+  $("#shareVideoPreviewWrap").classList.add("hidden");
   if (shareVideoUrl) URL.revokeObjectURL(shareVideoUrl);
   shareVideo = null;
   shareVideoFile = null;
@@ -1649,8 +1664,9 @@ function clearShareVideo() {
 }
 
 function animateShareVideo() {
-  if (!shareVideo || shareVideo.paused || shareVideo.ended) return;
+  if (!shareVideo || shareVideo.ended) return;
   renderShareCard();
+  if (shareVideo.paused) return;
   shareVideoFrame = requestAnimationFrame(animateShareVideo);
 }
 
