@@ -1592,33 +1592,56 @@ function loadShareMedia(event) {
   if (!file) return;
 
   clearShareVideo();
-  if (file.type.startsWith("video/")) {
+  const isVideo = file.type.startsWith("video/") || /\.(mp4|mov|m4v|webm)$/i.test(file.name);
+  if (isVideo) {
     const video = $("#shareVideoPreview");
+    sharePhoto = null;
+    shareVideo = video;
+    shareVideoFile = file;
     shareVideoUrl = URL.createObjectURL(file);
-    video.src = shareVideoUrl;
     video.muted = true;
+    video.defaultMuted = true;
     video.loop = true;
     video.playsInline = true;
-    video.preload = "metadata";
-    video.onloadeddata = async () => {
-      sharePhoto = null;
-      shareVideo = video;
-      shareVideoFile = file;
-      video.onplay = animateShareVideo;
-      video.onpause = renderShareCard;
-      video.onseeked = renderShareCard;
-      $("#shareVideoPreviewWrap").classList.remove("hidden");
-      $("#downloadRunCardButton").textContent = "기록 영상 저장";
-      $("#shareRunCardButton").textContent = "영상 SNS 공유";
-      renderShareCard();
-      await video.play().catch(() => {});
+    video.preload = "auto";
+    video.setAttribute("playsinline", "");
+    video.setAttribute("webkit-playsinline", "");
+
+    $("#shareVideoPreviewWrap").classList.remove("hidden");
+    $("#downloadRunCardButton").textContent = "기록 영상 저장";
+    $("#shareRunCardButton").textContent = "영상 SNS 공유";
+    $("#shareCardStatus").textContent = "영상을 불러오는 중입니다. 플레이어가 나타나면 재생 버튼을 눌러주세요.";
+
+    const syncVideoPreview = () => {
       renderShareCard();
       $("#shareCardStatus").textContent = "영상에 기록을 적용했습니다. 최대 15초의 무음 영상으로 저장·공유할 수 있습니다.";
     };
+    video.onloadedmetadata = () => {
+      $("#shareCardStatus").textContent = "영상이 준비되었습니다. 재생 버튼을 눌러 미리보세요.";
+      if (Number.isFinite(video.duration) && video.duration > 0 && video.currentTime === 0) {
+        try {
+          video.currentTime = Math.min(0.05, video.duration / 2);
+        } catch {
+          renderShareCard();
+        }
+      }
+    };
+    video.onloadeddata = syncVideoPreview;
+    video.oncanplay = syncVideoPreview;
+    video.onplay = animateShareVideo;
+    video.onpause = renderShareCard;
+    video.onseeked = renderShareCard;
     video.onerror = () => {
       clearShareVideo();
       $("#shareCardStatus").textContent = "영상을 읽지 못했습니다. 다른 영상 파일을 선택해주세요.";
     };
+
+    video.src = shareVideoUrl;
+    video.load();
+    renderShareCard();
+    video.play().catch(() => {
+      $("#shareCardStatus").textContent = "영상이 준비되면 플레이어의 재생 버튼을 눌러주세요.";
+    });
     return;
   }
 
@@ -1651,7 +1674,9 @@ function clearShareVideo() {
   preview.pause();
   preview.removeAttribute("src");
   preview.load();
+  preview.onloadedmetadata = null;
   preview.onloadeddata = null;
+  preview.oncanplay = null;
   preview.onerror = null;
   preview.onplay = null;
   preview.onpause = null;
