@@ -13,7 +13,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Gowun+Dodum&family=Orbitron:wght@500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="styles.css?v=20261026-25" />
+    <link rel="stylesheet" href="styles.css?v=20261027-26" />
   </head>
   <body>
     <div class="noise" aria-hidden="true"></div>
@@ -537,11 +537,11 @@
       <div class="share-card-layout">
         <section class="share-card-controls">
           <label class="share-photo-picker" for="sharePhotoInput">
-            <span>내 사진 선택</span>
-            <strong>사진 위에 오늘의 기록을 담습니다</strong>
-            <input id="sharePhotoInput" type="file" accept="image/*" hidden />
+            <span>내 사진 · 영상 선택</span>
+            <strong>사진 또는 영상 위에 오늘의 기록을 담습니다</strong>
+            <input id="sharePhotoInput" type="file" accept="image/*,video/*" hidden />
           </label>
-          <p class="share-privacy">선택한 사진과 FIT 기록은 서버에 전송되지 않고 이 브라우저 안에서만 합성됩니다.</p>
+          <p class="share-privacy">선택한 미디어와 FIT 기록은 서버로 전송되지 않습니다. 영상은 최대 15초의 무음 기록 카드로 저장됩니다.</p>
           <label class="share-caption-field">카드 문구
             <input id="shareCardCaption" maxlength="36" value="오늘도 한 걸음, STRIDE ON." />
           </label>
@@ -552,7 +552,7 @@
             <button id="downloadRunCardButton" class="primary-button" type="button">기록 이미지 저장</button>
             <button id="shareRunCardButton" class="outline-button" type="button">SNS로 공유</button>
           </div>
-          <p id="shareCardStatus" class="share-card-status" aria-live="polite">사진 없이도 STRION 배경으로 기록 카드를 만들 수 있습니다.</p>
+          <p id="shareCardStatus" class="share-card-status" aria-live="polite">사진이나 영상 없이도 STRION 배경으로 기록 카드를 만들 수 있습니다.</p>
         </section>
       </div>
     </dialog>
@@ -678,6 +678,6 @@
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-    <script type="module" src="app.js?v=20261026-25"></script>
+    <script type="module" src="app.js?v=20261027-26"></script>
   </body>
 </html>

@@ -20,6 +20,10 @@ let calendarCursor = new Date(new Date().getFullYear(), new Date().getMonth(), 1
 let deferredInstallPrompt = null;
 let liveClockDateKey = "";
 let sharePhoto = null;
+let shareVideo = null;
+let shareVideoFile = null;
+let shareVideoUrl = null;
+let shareVideoFrame = null;
 
 const PROFILE_STORAGE_KEY = "strionProfileV1";
 const COLLAPSE_STORAGE_KEY = "strionCollapsedSectionsV1";
@@ -153,7 +157,7 @@ $("#toggleGarminAccessCode").addEventListener("click", toggleGarminAccessCode);
 $("#dashboardModeButton").addEventListener("click", toggleDashboardMode);
 $("#openShareCardButton").addEventListener("click", openShareCardDialog);
 $("#closeShareCardButton").addEventListener("click", () => $("#shareCardDialog").close());
-$("#sharePhotoInput").addEventListener("change", loadSharePhoto);
+$("#sharePhotoInput").addEventListener("change", loadShareMedia);
 $("#shareCardCaption").addEventListener("input", renderShareCard);
 $("#shareRunCardButton").addEventListener("click", shareRunCard);
 $("#downloadRunCardButton").addEventListener("click", downloadRunCard);
@@ -1583,11 +1587,38 @@ function openShareCardDialog() {
   $("#shareCardDialog").showModal();
 }
 
-function loadSharePhoto(event) {
+function loadShareMedia(event) {
   const file = event.currentTarget.files?.[0];
   if (!file) return;
+
+  clearShareVideo();
+  if (file.type.startsWith("video/")) {
+    const video = document.createElement("video");
+    shareVideoUrl = URL.createObjectURL(file);
+    video.src = shareVideoUrl;
+    video.muted = true;
+    video.loop = true;
+    video.playsInline = true;
+    video.preload = "auto";
+    video.addEventListener("loadeddata", async () => {
+      sharePhoto = null;
+      shareVideo = video;
+      shareVideoFile = file;
+      $("#downloadRunCardButton").textContent = "기록 영상 저장";
+      $("#shareRunCardButton").textContent = "영상 SNS 공유";
+      await video.play().catch(() => {});
+      animateShareVideo();
+      $("#shareCardStatus").textContent = "영상에 기록을 적용했습니다. 최대 15초의 무음 영상으로 저장·공유할 수 있습니다.";
+    }, { once: true });
+    video.addEventListener("error", () => {
+      clearShareVideo();
+      $("#shareCardStatus").textContent = "영상을 읽지 못했습니다. 다른 영상 파일을 선택해주세요.";
+    }, { once: true });
+    return;
+  }
+
   if (!file.type.startsWith("image/")) {
-    $("#shareCardStatus").textContent = "이미지 파일을 선택해주세요.";
+    $("#shareCardStatus").textContent = "사진 또는 영상 파일을 선택해주세요.";
     return;
   }
   const url = URL.createObjectURL(file);
@@ -1595,6 +1626,8 @@ function loadSharePhoto(event) {
   image.onload = () => {
     sharePhoto = image;
     URL.revokeObjectURL(url);
+    $("#downloadRunCardButton").textContent = "기록 이미지 저장";
+    $("#shareRunCardButton").textContent = "SNS로 공유";
     renderShareCard();
     $("#shareCardStatus").textContent = "사진을 적용했습니다. 공유하거나 이미지로 저장할 수 있습니다.";
   };
@@ -1603,6 +1636,22 @@ function loadSharePhoto(event) {
     $("#shareCardStatus").textContent = "사진을 읽지 못했습니다. 다른 이미지를 선택해주세요.";
   };
   image.src = url;
+}
+
+function clearShareVideo() {
+  if (shareVideoFrame) cancelAnimationFrame(shareVideoFrame);
+  shareVideoFrame = null;
+  if (shareVideo) shareVideo.pause();
+  if (shareVideoUrl) URL.revokeObjectURL(shareVideoUrl);
+  shareVideo = null;
+  shareVideoFile = null;
+  shareVideoUrl = null;
+}
+
+function animateShareVideo() {
+  if (!shareVideo || shareVideo.paused || shareVideo.ended) return;
+  renderShareCard();
+  shareVideoFrame = requestAnimationFrame(animateShareVideo);
 }
 
 function renderShareCard() {
@@ -1620,8 +1669,9 @@ function renderShareCard() {
   context.fillStyle = background;
   context.fillRect(0, 0, width, height);
 
-  if (sharePhoto) {
-    drawCoverImage(context, sharePhoto, 0, 0, width, height);
+  const shareMedia = shareVideo?.readyState >= 2 ? shareVideo : sharePhoto;
+  if (shareMedia) {
+    drawCoverImage(context, shareMedia, 0, 0, width, height);
     const overlay = context.createLinearGradient(0, 0, 0, height);
     overlay.addColorStop(0, "rgba(1, 8, 15, .03)");
     overlay.addColorStop(0.48, "rgba(1, 8, 15, .10)");
@@ -1674,11 +1724,11 @@ function renderShareCard() {
     context.strokeStyle = "rgba(80, 236, 255, .72)";
     context.lineWidth = 2;
     context.strokeRect(x, y, 290, 72);
-    context.fillStyle = "rgba(173, 202, 215, .86)";
+    context.fillStyle = "rgba(244, 251, 255, .96)";
     context.shadowColor = "rgba(0, 0, 0, .95)";
-    context.shadowBlur = 8;
+    context.shadowBlur = 10;
     context.shadowOffsetY = 2;
-    context.font = '500 15px "Orbitron", sans-serif';
+    context.font = '700 16px "Orbitron", sans-serif';
     context.fillText(label, x + 18, y + 21);
     context.fillStyle = "#f4fbff";
     context.font = '700 24px "Orbitron", sans-serif';
@@ -1705,9 +1755,11 @@ function renderShareCard() {
 }
 
 function drawCoverImage(context, image, x, y, width, height) {
-  const scale = Math.max(width / image.naturalWidth, height / image.naturalHeight);
-  const drawWidth = image.naturalWidth * scale;
-  const drawHeight = image.naturalHeight * scale;
+  const sourceWidth = image.videoWidth || image.naturalWidth;
+  const sourceHeight = image.videoHeight || image.naturalHeight;
+  const scale = Math.max(width / sourceWidth, height / sourceHeight);
+  const drawWidth = sourceWidth * scale;
+  const drawHeight = sourceHeight * scale;
   context.drawImage(image, x + (width - drawWidth) / 2, y + (height - drawHeight) / 2, drawWidth, drawHeight);
 }
 
@@ -1749,15 +1801,70 @@ function createShareCardFile() {
   });
 }
 
+async function createShareVideoFile() {
+  if (!shareVideo || !shareVideoFile) throw new Error("먼저 영상을 선택해주세요.");
+  const canvas = $("#shareCardCanvas");
+  if (!canvas.captureStream || typeof MediaRecorder === "undefined") return shareVideoFile;
+
+  const mimeType = ["video/mp4", "video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm"]
+    .find((type) => MediaRecorder.isTypeSupported(type));
+  if (!mimeType) return shareVideoFile;
+
+  const previousTime = shareVideo.currentTime;
+  const duration = Math.min(Number.isFinite(shareVideo.duration) ? shareVideo.duration : 15, 15);
+  shareVideo.pause();
+  if (shareVideo.currentTime > 0.05) {
+    shareVideo.currentTime = 0;
+    await new Promise((resolve) => shareVideo.addEventListener("seeked", resolve, { once: true }));
+  } else {
+    shareVideo.currentTime = 0;
+  }
+
+  const chunks = [];
+  const stream = canvas.captureStream(30);
+  const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 6000000 });
+  recorder.addEventListener("dataavailable", (event) => { if (event.data.size) chunks.push(event.data); });
+  const stopped = new Promise((resolve) => recorder.addEventListener("stop", resolve, { once: true }));
+
+  recorder.start(500);
+  await shareVideo.play();
+  const startedAt = performance.now();
+  await new Promise((resolve) => {
+    const drawFrame = () => {
+      renderShareCard();
+      const elapsed = (performance.now() - startedAt) / 1000;
+      if (elapsed >= duration || shareVideo.ended) return resolve();
+      requestAnimationFrame(drawFrame);
+    };
+    drawFrame();
+  });
+  shareVideo.pause();
+  recorder.stop();
+  await stopped;
+  stream.getTracks().forEach((track) => track.stop());
+  shareVideo.currentTime = Math.min(previousTime, shareVideo.duration || previousTime);
+  await shareVideo.play().catch(() => {});
+  animateShareVideo();
+
+  const extension = mimeType.includes("mp4") ? "mp4" : "webm";
+  const blob = new Blob(chunks, { type: mimeType });
+  return new File([blob], `STRION-${toDateInputValue(activity.startTime)}.${extension}`, { type: mimeType });
+}
+
+function createShareMediaFile() {
+  return shareVideo ? createShareVideoFile() : createShareCardFile();
+}
+
 async function shareRunCard() {
   try {
-    const file = await createShareCardFile();
+    $("#shareCardStatus").textContent = shareVideo ? "기록 영상을 만드는 중입니다. 최대 15초 정도 걸립니다." : "공유 이미지를 만드는 중입니다.";
+    const file = await createShareMediaFile();
     if (navigator.share && navigator.canShare?.({ files: [file] })) {
       await navigator.share({ files: [file], title: "STRION 러닝 기록", text: "오늘의 러닝 기록 · STRIDE ON" });
       $("#shareCardStatus").textContent = "공유 메뉴로 기록 카드를 보냈습니다.";
     } else {
       downloadFile(file);
-      $("#shareCardStatus").textContent = "이 브라우저는 이미지 공유를 지원하지 않아 PNG로 저장했습니다.";
+      $("#shareCardStatus").textContent = `이 브라우저는 파일 공유를 지원하지 않아 ${shareVideo ? "영상" : "이미지"}으로 저장했습니다.`;
     }
   } catch (error) {
     if (error?.name !== "AbortError") $("#shareCardStatus").textContent = error.message || "공유 중 문제가 발생했습니다.";
@@ -1766,14 +1873,15 @@ async function shareRunCard() {
 
 async function downloadRunCard() {
   try {
-    const file = await createShareCardFile();
+    $("#shareCardStatus").textContent = shareVideo ? "기록 영상을 만드는 중입니다. 최대 15초 정도 걸립니다." : "기록 이미지를 만드는 중입니다.";
+    const file = await createShareMediaFile();
     const isAppleMobile = /iPhone|iPad|iPod/i.test(navigator.userAgent);
     if (isAppleMobile && navigator.share && navigator.canShare?.({ files: [file] })) {
       await navigator.share({ files: [file], title: "STRION 러닝 기록" });
-      $("#shareCardStatus").textContent = "공유 메뉴에서 ‘이미지 저장’을 선택하면 사진 앱에 보관됩니다.";
+      $("#shareCardStatus").textContent = `공유 메뉴에서 ‘${shareVideo ? "비디오" : "이미지"} 저장’을 선택하면 사진 앱에 보관됩니다.`;
     } else {
       downloadFile(file);
-      $("#shareCardStatus").textContent = "STRION 기록 카드를 PNG 이미지로 저장했습니다.";
+      $("#shareCardStatus").textContent = `STRION 기록 ${shareVideo ? "영상" : "이미지"}을 저장했습니다.`;
     }
   } catch (error) {
     if (error?.name !== "AbortError") $("#shareCardStatus").textContent = error.message || "이미지를 저장하지 못했습니다.";
