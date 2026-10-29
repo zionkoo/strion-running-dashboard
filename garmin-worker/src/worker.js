@@ -13,11 +13,22 @@ export default {
     }
 
     try {
+      const url = new URL(request.url);
+
+      if (url.pathname === "/api/portfolio/views") {
+        assertAllowedOrigin(origin, env.ALLOWED_ORIGINS);
+        return handlePortfolioViews(request, env, cors);
+      }
+
+      if (url.pathname === "/api/portfolio/owner") {
+        assertAllowedOrigin(origin, env.ALLOWED_ORIGINS);
+        return handlePortfolioOwner(request, env, cors);
+      }
+
       assertConfigured(env);
       assertAllowedOrigin(origin, env.ALLOWED_ORIGINS);
       assertAccessCode(request, env.STRION_ACCESS_CODE);
 
-      const url = new URL(request.url);
       if (request.method === "GET" && url.pathname === "/api/health") {
         await getGarminToken(env.GARMIN_API_KEY);
         return json({ ok: true, message: "Garmin Personal API 인증이 확인되었습니다." }, 200, cors);
@@ -47,6 +58,53 @@ export default {
     }
   },
 };
+
+async function handlePortfolioViews(request, env, cors) {
+  if (!env.PORTFOLIO_STATS) {
+    throw Object.assign(new Error("포트폴리오 조회수 저장소가 연결되지 않았습니다."), { status: 503 });
+  }
+
+  const key = "portfolio:external-views";
+  let count = Number(await env.PORTFOLIO_STATS.get(key)) || 0;
+  const ownerKey = await portfolioOwnerKey(request);
+  const isOwner = ownerKey ? Boolean(await env.PORTFOLIO_STATS.get(ownerKey)) : false;
+
+  if (request.method === "POST") {
+    if (!isOwner) {
+      count += 1;
+      await env.PORTFOLIO_STATS.put(key, String(count));
+    }
+  } else if (request.method !== "GET") {
+    throw Object.assign(new Error("지원하지 않는 요청 방식입니다."), { status: 405 });
+  }
+
+  return json({ count, isOwner, counted: request.method === "POST" && !isOwner }, 200, cors);
+}
+
+async function handlePortfolioOwner(request, env, cors) {
+  if (!env.PORTFOLIO_STATS) {
+    throw Object.assign(new Error("포트폴리오 조회수 저장소가 연결되지 않았습니다."), { status: 503 });
+  }
+  if (request.method !== "POST") {
+    throw Object.assign(new Error("지원하지 않는 요청 방식입니다."), { status: 405 });
+  }
+
+  const ownerKey = await portfolioOwnerKey(request);
+  if (!ownerKey) {
+    throw Object.assign(new Error("접속 정보를 확인할 수 없습니다."), { status: 400 });
+  }
+
+  await env.PORTFOLIO_STATS.put(ownerKey, "true");
+  return json({ ok: true, isOwner: true }, 200, cors);
+}
+
+async function portfolioOwnerKey(request) {
+  const ip = request.headers.get("CF-Connecting-IP") || "";
+  if (!ip) return "";
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(ip));
+  const hash = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+  return `portfolio:owner-ip:${hash}`;
+}
 
 async function garminFetch(path, env, accept = "application/json") {
   let token = await getGarminToken(env.GARMIN_API_KEY);
@@ -113,7 +171,7 @@ function corsHeaders(origin, allowedOrigins) {
   return {
     "Access-Control-Allow-Origin": selected,
     "Access-Control-Allow-Headers": "Authorization, Content-Type",
-    "Access-Control-Allow-Methods": "GET, OPTIONS",
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
     "Vary": "Origin",
     "Cache-Control": "no-store",
   };
