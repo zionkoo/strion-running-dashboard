@@ -8,3 +8,5 @@ ALLOWED_ORIGINS = "https://zionkoo.github.io,http://localhost:8000,http://127.0.
 [[kv_namespaces]]
 binding = "PORTFOLIO_STATS"
 id = "cfe26742ac1245c5909ee839407ed952"
+
+# Deployed by Cloudflare Workers Builds
