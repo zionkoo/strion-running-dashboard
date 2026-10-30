@@ -4,3 +4,7 @@ compatibility_date = "2026-10-24"
 
 [vars]
 ALLOWED_ORIGINS = "https://zionkoo.github.io,http://localhost:8000,http://127.0.0.1:8000,null"
+
+[[kv_namespaces]]
+binding = "PORTFOLIO_STATS"
+id = "cfe26742ac1245c5909ee839407ed952"
